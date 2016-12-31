@@ -1,0 +1,81 @@
+Historial de versiones - CrazyBus
+=================================
+2.00 (Momohime - 18/03/2010)
+Gracias a la comunidad de YouTube(tm), me acorde de desenterrar el codigo y el proyecto :)
+- Compilado en el mejor y mas reciente BasiEgaXorz 1.37
+- Testeado a fondo con Kega Fusion (3.63x) y Gens/GS (r7) bajo Linux x86_64
+- Docenas de imagenes nuevas y frescas, ahora con mayor calidad visual! (todas las fotos tomadas por este, su servidor ;)
+- Reescritura casi total del codigo
+- La musica "diabolica" ahora es (ligeramente) personalizable. Añade entropia presionando al azar cualquier boton! Correla en una consola PAL para maxima diversion!
+- Imagenes optimizadas utilizando "tile maps". Menos memoria, mas ahorro, mejor para la naturaleza
+- Sonido mas real para la corneta (inspirada en las bocinas electricas de los doblepisos)
+- Desplazamiento suave en el selector de autobuses (como debio ser desde el principio :)
+- Arreglados docenas de fallos relacionados con las rutinas de dibujo en pantalla
+- Alarma de "retro", igual que en los buses modernos
+- Campo de juego totalmente remodelado
+- Removidos TODOS los mensajes de depuracion
+- Y mucho mas...
+Espero sus videos y sus comentarios destructivos! Les dedico esta version a todos los "criticos" del BoboTube...
+
+1.1 (29/10/05)
+- Compilado ahora con BEX 0.26 BETA. Esto arregla muchos fallos menores pero molestos de BEX :P
+- Al fin, arreglado los molestos errores del sonido del bus en el campo de juego (motor y corneta). Ahora la corneta SOLO SUENA MIENTRAS PRESIONAS A en todos los casos (antes no siempre era asi)
+- Tambien arrelglados algunos fallos a la hora de dibujar el campo de juego: reemplazados muchos PRINTs con DRAWTILEs. Esto hace que nuestro efecto de "transparencia" en la capa superior quede impecable, sin feos huecos.
+- Retoques menores a la tarjeta de titulo con los logos de las empresas de buses
+- Limpieza menor aqui y alla, como siempre...
+- Ahora el nombre del bus seleccionado aparece en el campo de juego
+- Mas correciones en el modelo del Jum Buss: olvide el retrovisor...
+- Arreglos a la generacion de numeros aleatorios: removidos muchos RANDOMIZE que lejos de generar numeros aleatorios "puros", causaban secuencias repetidas, y hasta sin numeros aleatorios!
+
+1.0 (09/09/05)
+- Trabajo pesado en el codigo: limpieza y optimizaciones como nunca! Ahora CB deberia ir un 0.5% mas rapido :)
+- Mas fondos de fotos de buses. Ahora son aleatorios (bueno, casi...)
+- El juego se puede reiniciar al oprimir C
+- A�adidos dos modelos nuevos de buses (ENT-6000 y GV1150)
+- Nuevo y mejorado selector de buses! Ahora con mas fotos y detalles
+- A�adido un mensaje de advertencia para los usuarios de sistemas PAL (BEX y CB no han sido probados exhaustivamente en sistemas PAL, podrian ocurrir errores)
+- Cambiado el feo modelo existente del Vissta Buss por un modelo mas realista del Jum Buss (en realidad, la diferencia entre estos dos es el frontal)
+- A�adidos creditos al equipo de Solobuses.com (ellos tomaron la mayoria de las fotos en este juego)
+- Arreglados fallos con el pad en el campo de juego
+- Cambios menores a la pantalla de instrucciones (bueno, lo unico nuevo es el logo de CrazyBus)
+
+0.8 (27/11/04)
+- Nuevo bus en portada (de una linea venezolana... mas realista)
+- Modelo mejorado del Vissta Buss
+- Mensajes de copyright en ingles y espa�ol
+- Limpieza menor al codigo, como siempre
+- Arregladas imagenes del Vissta Buss y del bus escolar (bug en ImaGenesis que hacia que los rines de los cauchos salieran transparentes, y que provocaba basura alrededor de estos ultimos)
+
+0.7 (24/08/04)
+- Diversos arreglos al sonido (ahora el motor del bus suena mas realista cuando este esta detenido)
+- Ahora el texto y las imagenes se dibujan en diferentes capas, para efectos de transparencia.
+- Campo de juego mejorado
+- Limpieza importante al codigo
+- Velocidad de carga de recuadros (tiles) mejorada. Ahora las imagenes cargan mas rapido que nunca!
+
+0.6 (22/08/04)
+- Nuevo logo!
+- Otro bus nuevo...
+- Mas graficos bonitos... digo.. fotos
+- Un "experimento" de musica de fondo en el selector
+- Arreglos menores a los logos de las compa�ias (fondo blanco, animacion al logo de Sega, etc)
+
+0.5 (20/08/04)
+- A�adido otro modelo de bus
+- A�adido un selector de buses
+- Arreglos cosmeticos aqui y alla...
+
+0.4 (19/08/04)
+- A�adidas un par de pantallas de inicio
+- A�adida una pantalla de aviso legal (para esas compa�ias de buses, no me demanden... aun)
+- Cambiado el modelo del bus en el juego, de un dibujo personal, a una imagen descargada
+- A�adida una foto de un bus al campo de juego
+
+0.3 (16/08/04)
+- Version inicial publica
+
+0.1 (??/08/04)
+- Version inicial
+
+0.0 (en algun momento de Julio del 2004)
+- Inicio del proyecto

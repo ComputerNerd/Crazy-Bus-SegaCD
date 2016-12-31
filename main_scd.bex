@@ -1,0 +1,96 @@
+'this is the master program for crazy bus it will play the sega intro in sega 16 fmv format 0.05
+'I am porting the fmv code from asm to basic
+	asm
+DPORT    EQU $C00000    ; VDP Data port
+CPORT    EQU $C00004    ; VDP Command port
+	end asm
+	sleep 1
+	play_sega16_fmv lblptr&(sega_intro)
+
+'d0.l=pointer
+'every thing else is handled by my sega 16 fmv player code
+declare asm sub play_sega16_fmv(d0.l)
+	movea.l	d0,a0
+;sega16 fmv player v.05
+;Varibles used
+;A0  the main pointer used by all functions
+;A2  the back-up pointer for functions that use A0
+;D6  Number of frames
+	move.w (A0)+,D6	;store the number of frames to D6
+	sub.l	#$01,D6	;fixed a glitch
+next_frame:
+	movea.l	A0,A2	;copy a0 to a2 because it is affected by the dma stuff
+	;now load the pallete
+	;I need to transfer 32 bytes in words that would be 16
+	move.w	#$10,D0	;move 16 to D0 16=10 in hex
+	;The correct pointer is already loaded in A0
+	jsr	DoDMAtoCRAM
+	;now load and draw the map
+	movea.l	A2,A0	;restore A0
+	adda.l	#$20,A0	;add to the pointer so it points to the map
+	movea.l	A0,A2	;copy A0 to A2
+	move.l	#$40000003,d0
+	moveq	#$13,d1	;Note: it appers you need to subtract ONE from how big the map is
+	moveq	#$06,d2
+	jsr	ShowVDPGraphics
+	movea.l	A2,A0	;move A2 back to A0
+	adda.l	#$118,A0	;add 280 to A0
+	;now that I have the map display it is time to DMA the tiles to the VRAM
+	move.w (A0)+,D7	;store the filesize of the tiles to D7
+	movea.l	A0,A2	;copy a0 to a2 because it is affected by the dma stuff
+	move.l	D7,D0
+	move.l	#$40200000,d2 ;make the start tile 0
+	jsr	DoDMAtoVRAM	;DMA IT!
+	movea.l	A2,A0	;restore A0
+	ADDA.L	D7,A0
+	jsr	WaitOneFrame	;just freezes it
+	jsr	WaitOneFrame
+	jsr	WaitOneFrame
+	jsr	WaitOneFrame
+	;jsr	WaitOneFrame
+	;jsr	WaitOneFrame
+	dbra d6, next_frame
+end sub
+	asm
+WaitOneFrame:
+ MOVE.W (CPORT), D0
+ BTST   #3, D0
+ BNE    WaitOneFrame
+WaitOneFrame1:
+ MOVE.W (CPORT), D0
+ BTST   #3, D0
+ BEQ    WaitOneFrame1
+ RTS
+	end asm
+	asm
+; ---------------------------------------------------------------------------
+; Subroutine to	display	patterns via the VDP
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+ShowVDPGraphics:			; XREF: SegaScreen; TitleScreen; SS_BGLoad
+		lea	($C00000).l,a6
+		move.l	#$800000,d4
+
+loc_142C:
+		move.l	d0,4(a6)
+		move.w	d1,d3
+
+loc_1432:
+		addi.w	#$20,(a0); add to offset tiles
+		move.w	(A0)+,d5;changed from a1 to A0
+		addi.w	#$01,d5; add to offset tiles
+		move.w	d5,(a6);changed from a1 to A0
+		dbf	d3,loc_1432
+		add.l	d4,d0
+		dbf	d2,loc_142C
+		rts	
+; End of function ShowVDPGraphics
+	end asm
+	datafile	DMA.ASM
+
+
+sega_intro:
+	datafile	cop.sfmv,bin

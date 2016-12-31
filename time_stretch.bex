@@ -1,0 +1,145 @@
+	 	'Turn DAC on
+	 Asm "move.b #$2B,$A04000"
+ gosub BUSYWAIT
+ Asm "move.b #$80,$A04001"
+ 
+'Turn on both speakers
+ poke &hA04002,&hB6
+ gosub BUSYWAIT
+ poke &hA04003,&hC0
+	print	"pitch preserving time strech"
+	print	"on the sega genesis!"
+	print	"press the up button to select the"
+	print	"buffer size or how long each sample is"
+	locate 4,0
+	print	"played before being replayed.Press the"
+	locate 5,0
+	print	"down arrow to select how many times"
+	print	"the small sample will be replayed"
+	print	"press start to play the sample"
+	print	"left and right add/subtract one"
+	print	"A adds 10. B subtracts 10"
+	print	"Start plays it"
+	echo=1
+	buffer=512
+	while 1
+	'mode zero = replay time
+	'mode one = buffer size
+	pad=JOYPAD(0)
+	if pad.0 then
+	mode=0
+	gosub	redraw_echo
+	waitpadup
+	endif
+	if pad.1 then
+	mode=1
+	gosub	redraw_buffer
+	waitpadup
+	endif
+	if pad.7 then
+	waitpadup
+	asm
+	;move varibles to proper registers
+	move.w	(__INTEGER_ECHO),d2
+	move.w	(__INTEGER_BUFFER),d1
+	jsr		play_pcm
+	end asm
+	endif
+	if pad.2 then
+	if mode = 0 then
+	echo--
+	gosub	redraw_echo
+	else
+	buffer--
+	gosub	redraw_buffer
+	endif
+	waitpadup
+	endif
+	if pad.3 then
+	if mode = 0 then
+	echo++
+	gosub	redraw_echo
+	else
+	buffer++
+	gosub	redraw_buffer
+	endif
+	waitpadup
+	endif
+	if pad.6 then
+	if mode = 0 then
+	echo = echo+10
+	gosub	redraw_echo
+	else
+	buffer = buffer+10
+	gosub	redraw_buffer
+	endif
+	waitpadup
+	endif
+	if pad.4 then
+	if mode = 0 then
+	echo = echo-10
+	gosub	redraw_echo
+	else
+	buffer = buffer-10
+	gosub	redraw_buffer
+	endif
+	waitpadup
+	endif
+	wend
+	'gosub	play_pcm
+	end
+	
+redraw_echo:
+	locate 11,0
+	Print "replay:" + Str$(echo) + " time(s)              "
+	return
+redraw_buffer:
+	locate 11,0
+	Print "buffer size:" + Str$(buffer) + " bytes      "
+	return
+	
+play_pcm:
+'a2=sample location
+'d4=sample size which is then divided by the "buffer" size
+'the buffer size is how much is repeated before it is replayed
+'d2 and d6 =how many times it is played back before going to the next sample
+'d1=the "buffer" or how long the sample is echo or replayed before moving on to the next part
+	asm
+play_pcm:
+		lea	(PCM).l,a2			; Load the SEGA PCM sample into a2. It's important that we use a2 since a0 and a1 are going to be used up ahead when reading the joypad ports 
+		move.l	#(PCM_End-PCM),d4			; Load the size of the SEGA PCM sample into d3
+		move.b	#$2A,($A04000).l		; $A04000 = $2A -> Write to DAC channel	  
+		adda.l	d1,A2
+		DIVU.w	d1,D4
+pcm_loop:
+		move.w	d2,d6
+echo_pcm:
+		suba.l	d1,A2
+		move.w	d1,D3
+		jsr		PlayPCM_Loop
+		dbra d6, echo_pcm
+		adda.l	d1,A2
+		dbra d4, pcm_loop
+	end asm
+	return
+	asm
+PlayPCM_Loop:
+		move.b	(a2)+,($A04001).l		; Write the PCM data (contained in a2) to $A04001 (YM2612 register D0)
+		move.w	#$1B,d0				; Write the pitch ($14 in this case) to d0 
+		dbf	d0,*				; Decrement d0; jump to itself if not 0. (for pitch control, avoids playing the sample too fast)
+		sub.l	#1,d3				; Subtract 1 from the PCM sample size 
+		beq.s	return_PlayPCM			; If d3 = 0, we finished playing the PCM sample, so stop playing, leave this loop, and unfreeze the 68K 
+		bra.s	PlayPCM_Loop			; Otherwise, continue playing PCM sample
+return_PlayPCM:
+	RTS
+	end asm
+	
+	'end of play_pcm
+	asm
+PCM:	incbin	bus.snd
+PCM_end:	even
+	end asm
+BUSYWAIT:
+	status=peek(&hA04001)
+	if status.7=0 then return else goto BUSYWAIT
+	return	

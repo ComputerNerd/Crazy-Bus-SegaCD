@@ -1,0 +1,1279 @@
+'here is the selection screen
+	asm
+DPORT    EQU $C00000    ; VDP Data port
+CPORT    EQU $C00004    ; VDP Command port
+	end asm
+	option	SEGACD PROGRAM
+	'Bus seleccionado
+	global busID as integer at &hFFFF3039
+	cdplay 3
+	selBus
+	getReady
+	cls
+	print	"loading"
+	loadscd 3
+	end
+		
+'*********************
+'Selector de autobuses
+'*********************
+
+'Dibujar fondo del selector
+declare sub DrawSelBG()
+	disable screen
+	settextplane scroll_b
+	cls
+	settextplane scroll_a
+	cls
+	
+	'Recargar fuente y botones
+	loadfont
+	loadtiles botones, 4, 1
+	
+	'Mapa de paletas:
+	'================
+	'0: fuente + botones
+	'1: fondo
+	'2: autobus
+	'3: logotipo
+	
+	'un colorcito decente para dibujar
+	pallette &h0C00, 0, 1
+	
+	'le fondo va en le capa B
+	setgfxplane scroll_b
+	loadtiles cb_bg_16,57,192
+	pallettes cb_bg_16_pal,1,0,16
+	
+	for y = 0 to 24 step 8
+		for x = 0 to 30 step 10
+		DrawTiles16 lblptr&(cb_bg_16_map),  x, y, 10, 8, 192+pallette(1)
+		next x
+	next y
+	
+	'ñ = chr$(164)
+	'Ñ = chr$(165)
+	
+	'Rotulos
+	ink 0
+	locate 0, 2: print "Modelo"
+	locate 2, 2: print "Origen: ??????????"
+	locate 3, 2: print "Altura: 0.00m (SD)"
+	'locate 5, 2: print "*******INFOTAGS*********"
+	'locate 6, 2: print "*******INFOTAGS*********"
+	locate 7, 2: print "==>Select a bus!<=="
+	locate 8, 2: print "==>Selecciona un bus!<=="
+	locate 12,28: print "Motor:"
+	locate 13,29: print "000HP"
+	locate 15,28: print "Puestos:"
+	locate 16,29: print "00 (max)"
+	locate 18,27: print "[  <- ->  ]"
+	locate 19,27: print "Cambiar bus"
+	locate 21,27: print "[    " + chr$(4) + "    ]"
+    locate 22,27: print "Seleccionar"
+	enable screen
+end sub
+
+'fondo para el selector (10x8, mapped to 57 tiles)
+cb_bg_16_pal: 
+	DATAINT	$0CC6,$0CC6,$0EEE,$0CAC,$0ACE,$0868,$0668,$0686
+	DATAINT	$08AA,$0666,$0866,$0CCA,$0CAA,$0AAE,$0ACA,$06AA
+cb_bg_16: datafile cb_bg_16.tmf, bin
+cb_bg_16_map: datafile cb_bg_16.tmd, bin
+
+
+Declare Asm Sub DrawTiles16(d5.l, d0.w, d1.w, d2.w, d3.w, d4.w)	
+	movea.l	d5,a0
+	subq.b	#1,d2
+	subq.b	#1,d3
+	move.w	#$2700,sr
+	and.l	#63,d0
+	and.l	#63,d1
+	and.l	#511,d2
+	and.l	#511,d3
+	lsl.w	#6,d1
+	add.w	d1,d0
+	move.w	d2,d1
+	lsl.l	#3,d0
+	lsr.w	#2,d0
+	swap	d0
+	add.l	(GFX_PLANE),d0
+	move.w	#$8F02,4(a4)
+@1:
+	move.l	d0,4(a4)
+@2:
+	move.w	(a0)+,d7
+	add.w	d4,d7
+	move.w	d7,(a4)
+	dbf	d2,@2
+	add.l	#$800000,d0
+	move.w	d1,d2
+	dbf	d3,@1
+	move.w	#$2000,sr
+End Sub
+
+'Botones (estilo U64)
+botones:
+	DATALONG	$00066000	'  A
+	DATALONG	$00666600
+	DATALONG	$06888860
+	DATALONG	$66866866
+	DATALONG	$66888866
+	DATALONG	$06866867
+	DATALONG	$00666670
+	DATALONG	$00066700
+
+	DATALONG	$000DD000	'  B
+	DATALONG	$00DDDD00
+	DATALONG	$0DD8DDD0
+	DATALONG	$DDD800DD
+	DATALONG	$DDD8D0DD
+	DATALONG	$0DD800D7
+	DATALONG	$00DDDD70
+	DATALONG	$000DD700
+	
+	DATALONG	$00099000	'  C
+	DATALONG	$00999900
+	DATALONG	$09988990
+	DATALONG	$99899999
+	DATALONG	$99899999
+	DATALONG	$09988997
+	DATALONG	$00999970
+	DATALONG	$00099700
+	
+	DATALONG	$00033000	'  START
+	DATALONG	$00333300
+	DATALONG	$03388330
+	DATALONG	$33833333
+	DATALONG	$33388333
+	DATALONG	$03333837
+	DATALONG	$00388370
+	DATALONG	$00033700
+	
+	
+'El selector en si
+declare sub selBus()
+	'Poner el fondo...
+	DrawSelBG
+	
+	'Dibujar el primer bus
+	showBus 0, 0
+	showBus 0, 1
+	
+	'La musica y las animaciones van en las interrupciones
+	'on vblank gosub aniSelector_stub
+	'enable interrupt vblank
+	'Animar pantalla y preguntar por el pad...
+	drop = 0
+	'psgvol 0,15: psgvol 1,15: psgvol 2,15
+
+	busID = 0
+	dr = 0
+	while dr = 0
+		dr = joypad(0)
+		waitpadup 0
+		
+		if dr.2 then		'izquierda
+			'Bus anterior
+			if busID > 0 then
+				busID--
+			elseif busID = 0 then
+				busID = 4
+			endif
+			scrollBus 0
+		elseif dr.3 then	'derecha
+			'Siguiente bus
+			if busID < 4 then
+				busID++
+			elseif busID = 4 then
+				busID = 0
+			endif
+			scrollBus 1
+		elseif dr.7 then	'START
+			'Callar musiquita y animaciones
+			disable interrupt vblank
+			psgvol 0,0: psgvol 1,0: psgvol 2,0
+			'Salimos de aca
+			'(ya tenemos nuestra seleccion en busID)
+			exit sub
+			'loadscd 4
+		endif
+		sleep 1
+		dr = 0
+	wend
+end sub
+
+'*********************
+'Recursos del selector
+'*********************
+
+'LOGOS DE LOS FABRICANTES
+'Logo ENCAVA 9x3=27 tiles	
+elogo_pal:
+	DATAINT	$0000,$0000,$00EE,$0000,$0000,$0000,$0000,$0000
+	DATAINT	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+elogo: datafile logo_e.tlf ,BIN
+	
+'Logo Busscar 16x4=64 tiles
+blogo_pal:
+	DATAINT	$0CCC,$0CCC,$0EEE,$0866,$0822,$0620,$0862,$0C88
+	DATAINT	$08CC,$0888,$0886,$0C86,$00CE,$0268,$0CC8,$0000
+blogo: datafile logo_b.tlf ,BIN
+
+'Logo Irizar 11x3=33 tiles
+ilogo_pal:
+	DATAINT	$0CCC,$0CCC,$0AAA,$0EEE,$0222,$0000,$0CCE,$066C
+	DATAINT	$000C,$0888,$0444,$0666,$0006,$0AAE,$022C,$0000
+ilogo: datafile logo_i.tlf ,BIN
+	
+'Logo Marcopolo 13x3=39 tiles
+mlogo_pal:
+	DATAINT	$0CAA,$0CAA,$0AAA,$0EEE,$0424,$0222,$0422,$0CCC
+	DATAINT	$0224,$0444,$0688,$0442,$08AE,$068E,$006E,$0000
+mlogo: datafile logo_m.tlf ,BIN
+
+'VISTAS PREVIAS DE LOS AUTOBUSES (24x15)
+'IC395: optimized to 311
+bus01p_i_pal:
+	DATAINT	$0688,$0244,$0220,$0444,$0222,$0000,$0200,$0620
+	DATAINT	$0464,$0C88,$0CCC,$0EEE,$0020,$0CEE,$0688,$0042
+'bus01p_i: datafile bus01p_i.tmf, bin
+	asm
+bus01p_i:
+		incbin	bus01p_i.kos
+		even
+	end asm
+bus01p_i_map: datafile bus01p_i.tmd, bin
+
+'JB360: optimized to 359
+bus02p_b_pal:
+	DATAINT	$0CCC,$0CCC,$08AA,$0888,$0444,$0422,$0222,$0224
+	DATAINT	$0220,$0022,$0244,$0266,$0666,$0020,$0268,$0000
+'bus02p_b: datafile bus02p_b.tmf, bin
+	asm
+bus02p_b:
+		incbin	bus02p_b.kos
+		even
+	end asm
+bus02p_b_map: datafile bus02p_b.tmd, bin
+
+'ENT6100: optimized to 315
+bus03p_e_pal:
+	DATAINT	$0EEE,$0EEE,$0EEC,$0EC8,$0CA8,$0A84,$0666,$0840
+	DATAINT	$0444,$0440,$0220,$0420,$0620,$0200,$0000,$0000
+'bus03p_e: datafile bus03p_e.tmf, bin
+	asm
+bus03p_e:
+		incbin	bus03p_e.kos
+		even
+	end asm
+bus03p_e_map: datafile bus03p_e.tmd, bin
+
+'GEN_ESC: optimized to 357
+bus04p_s_pal:
+	DATAINT	$0CCC,$0AAA,$0CCC,$0EEE,$0ACE,$0688,$0888,$0666
+	DATAINT	$06AC,$046A,$0244,$0248,$004A,$0000,$0024,$0002
+'bus04p_s: datafile bus04p_s.tmf, bin
+	asm
+bus04p_s:
+		incbin	bus04p_s.kos
+		even
+	end asm
+bus04p_s_map: datafile bus04p_s.tmd, bin
+
+'PGV1150: optimized to 350
+bus05p_m_pal:
+	DATAINT	$0EEE,$0CCA,$0EEE,$0AAA,$0ACE,$0666,$0668,$0446
+	DATAINT	$0424,$0466,$0222,$0224,$08AA,$08AE,$068C,$0000
+'bus05p_m: datafile bus05p_m.tmf, bin
+	asm
+bus05p_m:
+		incbin	bus05p_m.kos
+		even
+	end asm
+bus05p_m_map: datafile bus05p_m.tmd, bin
+
+
+'Desplazar en pantalla de seleccion
+declare sub scrollBus(dir as integer)
+	'Direcciones: 0 = atras, 1 = adelante
+
+	if dir = 1 then			'izquierda
+		for z = 1 to 512
+			scroll left, 1
+			'Pausar cada 16 pixeles para no hacer tan volado
+			'el desplazamiento de paginas
+			if z % 16 = 0 then
+				sleep 1
+			endif
+			'BEX 1.37 BUG: SELECT CASE provoca que el desplazamiento se ahogue
+			'              espantosamente tras dibujar la foto del autobus (!!!)
+			'              Con IF/ELSE no existe tal perdida de rendimiento
+			if z = 216 then
+			'select case z
+			'	case 216
+					'-216: foto
+					showbus busID, 1
+			'		exit case
+			elseif z = 312 then
+			'	case 312
+					'-312: logo
+					showbus busID, 0
+			'		exit case
+			'end select
+			endif
+		next z
+	else if dir = 0 then	'derecha
+		for z = 1 to 512
+			scroll right, 1
+			'idem idem...
+			if z % 16 = 0 then
+				sleep 1
+			endif
+			if z = 144 then
+			'select case z
+			'	case 144
+					'+144: logo
+					showbus busID, 0
+			'		exit case
+			elseif z = 296 then
+			'	case 296
+					'+296: foto
+					showbus busID, 1
+			'		exit case
+			'end select
+			endif
+		next z
+	endif
+end sub
+
+'Mostrar autobus en pantalla
+declare sub showBus(bus as integer, part as integer)
+	'IDs de autobuses:
+	'0 = Irizar Century 3.95
+	'1 = Busscar Jum Buss 360
+	'2 = ENCAVA E-NT6000
+	'3 = Escolar generico
+	'4 = Marcopolo Paradiso GV1150
+	
+	'Parte a dibujar:
+	'1 = foto + infotag principal
+	'0 = logo + infotag secundario
+	
+	setgfxplane scroll_a
+	
+	'Borrar el area del logo, ya que los tenemos de diferentes tamaños
+	'El mas grande que tenemos es el de Busscar (16x4), asi que usamos
+	'ese tamaño para hacer la limpieza
+	if part = 0 then
+		for y = 1 to 4
+			for x = 1 to 16
+				DrawTile 0, 21+x, 0+y
+			next x
+		next y
+	endif
+	
+	select case bus
+		case 0
+			'Century 3.95
+			if part = 0 then
+				loadtiles ilogo, 33, 256
+				pallettes ilogo_pal, 3, 0, 16
+				ink 3
+				DrawTilesInc 256, 27, 1, 11, 3
+				ink 0
+				locate 13,29: print "360HP"
+				locate 16,29: print "50 (max)"
+			elseif part = 1 then
+				'loadtiles bus01p_i, 311, 320
+				asm
+					lea	(bus01p_i).l,a0
+					lea	($FFF6000).l,a1
+					jsr		KosDec
+					move.w	#320,d0
+					move.w	#311,d3
+					lea	($FFF6000).l,a0
+					jsr		LoadTilesasm
+				end asm
+				pallettes bus01p_i_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus01p_i_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "Century 3.95   "
+				locate 2,10: print "Espa" + chr$(164) + "a    "
+				locate 3,10: print "3.95M (SD)"
+				locate 5, 2: print "Autobus de lujo superior"
+				locate 6, 2: print "Mejor con Mercedes-Benz "
+			endif
+			exit case
+		case 1
+			'Jum Buss 360
+			if part = 0 then
+				loadtiles blogo, 64, 256
+				pallettes blogo_pal, 3, 0, 16
+				ink 3
+				DrawTilesInc 256, 22, 1, 16, 4
+				ink 0
+				locate 13,29: print "360HP"
+				locate 16,29: print "52 (max)"
+			elseif part = 1 then
+				'loadtiles bus02p_b, 359, 320
+				asm
+					lea	(bus02p_b).l,a0
+					lea	($FFF6000).l,a1
+					jsr		KosDec
+					move.w	#320,d0
+					move.w	#359,d3
+					lea	($FFF6000).l,a0
+					jsr		LoadTilesasm
+				end asm
+				pallettes bus02p_b_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus02p_b_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "Jum Buss 360   "
+				locate 2,10: print "Brasil    "
+				locate 3,10: print "3.60M (SD)"
+				locate 5, 2: print "Autobus muy duradero    "
+				locate 6, 2: print "Optimo con chasis Scania"
+			endif
+			exit case
+		case 2
+			'E-NT6000
+			if part = 0 then
+				loadtiles elogo, 27, 256
+				pallettes elogo_pal, 3, 0, 16
+				ink 3
+				DrawTilesInc 256, 29, 1, 9, 3
+				ink 0
+				locate 13,29: print "300HP"
+				locate 16,29: print "40 (max)"
+			elseif part = 1 then
+				'loadtiles bus03p_e, 315, 320
+				asm
+					lea	(bus03p_e).l,a0
+					lea	($FFF6000).l,a1
+					jsr		KosDec
+					move.w	#320,d0
+					move.w	#315,d3
+					lea	($FFF6000).l,a0
+					jsr		LoadTilesasm
+				end asm
+				pallettes bus03p_e_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus03p_e_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "E-NT6000       "
+				locate 2,10: print "Venezuela "
+				locate 3,10: print "2.80M (SD)"
+				locate 5, 2: print "Modelo para rutas cortas"
+				locate 6, 2: print "Chasis personalizado    "
+			endif
+			exit case
+		case 3
+			'Escolar
+			if part = 0 then
+				'no logo...
+				ink 0
+				locate 13,29: print "200HP"
+				locate 16,29: print "60 (max)"
+			elseif part = 1 then
+				'loadtiles bus04p_s, 357, 320
+				asm
+					lea	(bus04p_s).l,a0
+					lea	($FFF6000).l,a1
+					jsr		KosDec
+					move.w	#320,d0
+					move.w	#357,d3
+					lea	($FFF6000).l,a0
+					jsr		LoadTilesasm
+				end asm
+				pallettes bus04p_s_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus04p_s_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "Autobus escolar"
+				locate 2,10: print "??????????"
+				locate 3,10: print "2.50M (SD)"
+				locate 5, 2: print "Clasico amarillo escolar"
+				locate 6, 2: print "Configuracion variable  "
+			endif
+			exit case
+		case 4
+			'Paradiso GV1150
+			if part = 0 then
+				loadtiles mlogo, 39, 256
+				pallettes mlogo_pal, 3, 0, 16
+				ink 3
+				DrawTilesInc 256, 25, 1, 13, 3
+				ink 0
+				locate 13,29: print "340HP"
+				locate 16,29: print "52 (max)"
+			elseif part = 1 then
+				'loadtiles bus05p_m, 350, 320
+				asm
+					lea	(bus05p_m).l,a0
+					lea	($FFF6000).l,a1
+					jsr		KosDec
+					move.w	#320,d0
+					move.w	#350,d3
+					lea	($FFF6000).l,a0
+					jsr		LoadTilesasm
+				end asm
+				pallettes bus05p_m_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus05p_m_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "Paradiso GV1150"
+				locate 2,10: print "Brasil    "
+				locate 3,10: print "3.55M (SD)"
+				locate 5, 2: print "Legendario de las vias  "
+				locate 6, 2: print "Favorito para Volvo     "
+			endif
+			exit case
+	end select
+end sub
+'manejador de evento
+
+	
+'logo CB (18*5=90)
+cblogo_pal:
+	DATAINT	$00E0,$0AAE,$088E,$066E,$022E,$000E,$0CCE,$0EEE
+	DATAINT	$0448,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+cblogo: datafile cblogo_n.tlf, bin
+
+'Paleta para el arranque
+pal_bg2:
+	DATAINT	$0000,$0EEE,$0E0E,$000E,$0EE0,$00E0,$0E00,$0888
+	DATAINT	$0CEE,$00CC,$0808,$0008,$0880,$0080,$0000,$00EE	
+bg_i_01_pal:
+	datafile	bg_i_01.png.pal,bin
+'now using commpresed tiles
+'bg_i_01_tile:
+'	datafile	bg_i_01.png.pat,bin
+'bg_i_01_map:
+'	datafile	bg_i_01.png.nam,bin
+bg_i_02_pal:
+	datafile	bg_i_02p.bin,bin
+'bg_i_02_tile:
+'	datafile	bg_i_02.png.pat,bin
+'bg_i_02_map:
+'	datafile	bg_i_02m.bin,bin
+bg_i_03_pal:
+	datafile	bg_i_03.png.pal,bin
+'bg_i_03_tile:
+'	datafile	bg_i_03.png.pat,bin
+'bg_i_03_map:
+'	datafile	bg_i_03.png.nam,bin
+bg_i_04_pal:
+	datafile	bg_i_04.png.pal,bin
+'bg_i_04_tile:
+'	datafile	bg_i_04.png.pat,bin
+'bg_i_04_map:
+'	datafile	bg_i_04.png.nam,bin
+bg_i_05_pal:
+	datafile	bg_i_05.png.pal,bin
+'bg_i_05_tile:
+'	datafile	bg_i_05.png.pat,bin
+'bg_i_05_map:
+'	datafile	bg_i_05.png.nam,bin
+bg_i_06_pal:
+	datafile	bg_i_06.png.pal,bin
+bg_i_07_pal:
+	datafile	double_deckerp.bin,bin
+	asm
+bg_i_01_map:
+	incbin	bg_i_01.png.eni
+	even
+bg_i_02_map:
+	incbin	bg_i_02m.eni
+	even
+bg_i_03_map:
+	incbin	bg_i_03.png.eni
+	even
+bg_i_04_map:
+	incbin	bg_i_04.png.eni
+	even
+bg_i_05_map:
+	incbin	bg_i_05.png.eni
+	even
+bg_i_06_map:
+	incbin	bg_i_06.png.eni
+	even
+	end asm
+
+'Pantalla de instrucciones
+
+	asm
+;note you are gonna have to copy paste these  to the basic directory to compile
+;all the files in this asm tag
+;this applies to all compressed files in asm tags
+bg_i_01:
+		incbin	bg_i_01.png.kos
+		even
+bg_i_02:
+		incbin	bg_i_02t.kos
+		even
+bg_i_03:
+		incbin	bg_i_03.png.kos
+		even
+bg_i_04:
+		incbin	bg_i_04.png.kos
+		even
+bg_i_05:
+		incbin	bg_i_05.png.kos
+		even
+bg_i_06:
+		incbin	bg_i_06.png.kos
+		even
+bg_i_07:
+		incbin	double_deckert.kos
+		even
+	end asm
+
+
+	asm
+;---------------------------------------------------
+;Kosinski decompression algorithm
+; (sometimes called Kozinski decompression)
+;input: a0 = source
+;input: a1 = destination
+;------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+KosDec:
+    subq.l	#2,sp
+    move.b	(a0)+,1(sp)
+    move.b	(a0)+,(sp)
+    move.w	(sp),d5
+    moveq	#$F,d4
+
+Koz01:
+    lsr.w	#1,d5
+    move	sr,d6
+    dbf	d4,@1
+    move.b	(a0)+,1(sp)
+    move.b	(a0)+,(sp)
+    move.w	(sp),d5
+    moveq	#$F,d4
+@1: move	d6,ccr
+    bcc.s	Koz02
+    move.b	(a0)+,(a1)+
+    bra.s	Koz01
+
+Koz02:
+    moveq	#0,d3
+    lsr.w	#1,d5
+    move	sr,d6
+    dbf	d4,@1
+    move.b	(a0)+,1(sp)
+    move.b	(a0)+,(sp)
+    move.w	(sp),d5
+    moveq	#$F,d4
+@1: move	d6,ccr
+    bcs.s	Koz03
+    lsr.w	#1,d5
+    dbf	d4,@2
+    move.b	(a0)+,1(sp)
+    move.b	(a0)+,(sp)
+    move.w	(sp),d5
+    moveq	#$F,d4
+@2: roxl.w	#1,d3
+    lsr.w	#1,d5
+    dbf	d4,@3
+    move.b	(a0)+,1(sp)
+    move.b	(a0)+,(sp)
+    move.w	(sp),d5
+    moveq	#$F,d4
+@3: roxl.w	#1,d3
+    addq.w	#1,d3
+    moveq	#-1,d2
+    move.b	(a0)+,d2
+    bra.s	Koz04
+
+Koz03:
+    move.b	(a0)+,d0
+    move.b	(a0)+,d1
+    moveq	#-1,d2
+    move.b	d1,d2
+    lsl.w	#5,d2
+    move.b	d0,d2
+    andi.w	#7,d1
+    beq.s	Koz05
+    move.b	d1,d3
+    addq.w	#1,d3
+
+Koz04:
+    move.b	(a1,d2.w),d0
+    move.b	d0,(a1)+
+    dbf	d3,Koz04
+    bra.s	Koz01
+
+Koz05:
+    move.b	(a0)+,d1
+    beq.s	KozExit
+    cmpi.b	#1,d1
+    beq.w	Koz01
+    move.b	d1,d3
+    bra.s	Koz04
+
+KozExit:
+    addq.l	#2,sp
+    rts
+	end asm
+
+
+declare sub getReady()
+	disable screen
+	cls
+	settextplane scroll_b
+	cls
+	settextplane scroll_a
+	setgfxplane scroll_b
+	
+	'Cargar el logo de CB...
+	loadtiles cblogo,90,128
+	pallettes cblogo_pal,2,0,16
+	'restaurar paleta para textos y botones
+	pallettes pal_bg2, 0, 0, 16
+	
+	'Tenemos 6 fondos, asi que elegimos uno al azar:
+	z = rnd(7)
+	'z=7
+	dim capt as string
+	capt$ = ""
+	select case z
+		'Paso 1: cargar imagen de fondo
+		'Paso 2: dibujar fondo
+		'Paso 3: Fijar el primer color de la primera paleta para que el
+		'        texto sea legible sobre la imagen de fondo
+		'Paso 4: No hay paso 4 en esta pantalla :P
+		bgcolor 1,0
+		case 0
+			pallettes bg_i_01_pal, 1, 0, 16
+			'loadtiles bg_i_01_tile, 1116, 218
+			asm
+			lea	(bg_i_01).l,a0
+			lea	($FFF6000).l,a1
+			jsr		KosDec
+			move.w	#218,d0	;218
+			move.w	#1116,d3
+			lea	($FFF6000).l,a0
+			jsr		LoadTilesasm
+			end asm
+			'DrawTiles16 lblptr&(bg_i_01_map),  0, 0, 40, 28, 218+pallette(1)
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_i_01_map).l,a0
+			move.w	#8410,d0	;+pallete(1)=8192
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			pallette &h00EE, 0, 1
+			exit case
+		case 1
+			pallettes bg_i_02_pal, 1, 0, 16
+			'loadtiles bg_i_02_tile, 994, 218
+			asm
+			lea	(bg_i_02).l,a0
+			lea	($FFF6000).l,a1
+			jsr		KosDec
+			move.w	#$DA,d0	;218
+			move.w	#$3E2,d3
+			lea	($FFF6000).l,a0
+			jsr		LoadTilesasm
+			end asm
+			'DrawTiles16 lblptr&(bg_i_02_map),  0, 0, 40, 28, 218+pallette(1)
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_i_02_map).l,a0
+			move.w	#8410,d0	;+pallete(1)=8192
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			pallette &h004E, 0, 1
+			exit case
+		case 2
+			pallettes bg_i_03_pal, 1, 0, 16
+			'loadtiles bg_i_03_tile, 942, 218
+			asm
+			lea	(bg_i_03).l,a0
+			lea	($FFF6000).l,a1
+			jsr		KosDec
+			move.w	#$DA,d0	;218
+			move.w	#$3AE,d3
+			lea	($FFF6000).l,a0
+			jsr		LoadTilesasm
+			end asm
+			'DrawTiles16 lblptr&(bg_i_03_map),  0, 0, 40, 28, 218+pallette(1)
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_i_03_map).l,a0
+			move.w	#8410,d0	;+pallete(1)=8192
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			pallette &h0E0E, 0, 1
+			exit case
+		case 3
+			pallettes bg_i_04_pal, 1, 0, 16
+			'loadtiles bg_i_04_tile, 904, 218
+			asm
+			lea	(bg_i_04).l,a0
+			lea	($FFF6000).l,a1
+			jsr		KosDec
+			move.w	#$DA,d0	;218
+			move.w	#$388,d3
+			lea	($FFF6000).l,a0
+			jsr		LoadTilesasm
+			end asm
+			'DrawTiles16 lblptr&(bg_i_04_map),  0, 0, 40, 28, 218+pallette(1)
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_i_04_map).l,a0
+			move.w	#8410,d0	;+pallete(1)=8192
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			pallette &h00EA, 0, 1
+			exit case
+		case 4
+			pallettes bg_i_05_pal, 1, 0, 16
+			'loadtiles bg_i_05_tile, 1086, 218
+			asm
+			lea	(bg_i_05).l,a0
+			lea	($FFF6000).l,a1
+			jsr		KosDec
+			move.w	#$DA,d0	;218
+			move.w	#$42F,d3
+			lea	($FFF6000).l,a0
+			jsr		LoadTilesasm
+			end asm
+			'DrawTiles16 lblptr&(bg_i_05_map),  0, 0, 40, 28, 218+pallette(1)
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_i_05_map).l,a0
+			move.w	#8410,d0	;+pallete(1)=8192
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			pallette &h0E80, 0, 1
+			exit case
+		case 5' else
+			pallettes bg_i_06_pal, 1, 0, 16
+			'loadtiles bg_i_06_tile, 1065, 218
+			asm
+			lea	(bg_i_06).l,a0
+			lea	($FFF6000).l,a1
+			jsr		KosDec
+			move.w	#$DA,d0	;218
+			move.w	#$429,d3
+			lea	($FFF6000).l,a0
+			jsr		LoadTilesasm
+			end asm
+			'DrawTiles16 lblptr&(bg_i_06_map),  0, 0, 40, 28, 218+pallette(1)
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_i_06_map).l,a0
+			move.w	#8410,d0	;+pallete(1)=8192
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			pallette &h0EE0, 0, 1
+			exit case
+		case else
+			pallettes bg_i_07_pal, 1, 0, 16
+			'loadtiles bg_i_06_tile, 1065, 218
+			asm
+			lea	(bg_i_07).l,a0
+			lea	($FFF6000).l,a1
+			jsr		KosDec
+			move.w	#$DA,d0	;218
+			move.w	#1120,d3
+			lea	($FFF6000).l,a0
+			jsr		LoadTilesasm
+			end asm
+			'DrawTiles16 lblptr&(bg_i_06_map),  0, 0, 40, 28, 218+pallette(1)
+			'DrawTilesInc <tile vram offset>, <x>, <y>, <width>, <height>
+			ink 1
+			drawtilesinc 218,0,0,40,28
+			pallette &h0EE0, 0, 1
+			exit case
+	end select
+	enable screen
+	bgcolor 1,0
+	sleep 10
+	
+	setgfxplane scroll_a
+	'Dibujar nuestro bello logo en SCROLL_A junto al bla-bla bla
+	ink 2
+	drawtilesinc 128,11,3,18,5
+	
+	'Mostrar las instrucciones
+	locate 8,11
+	ink 0
+	print "** CONTROLES **"
+	locate 12,3
+	print "<- Mover bus a la izquierda"
+	locate 13,3
+	print "-> Mover bus a la derecha"
+	locate 14,3
+	print chr$(1) + "  Tocar corneta"
+	locate 15,3
+	print chr$(3) + "  Volver a la pantalla inicial"
+	locate 24,19
+	print "Preparate..."
+	
+	'Preparar la cuenta regresiva
+	psgvol 1,15
+	pallette &h000E, 3, 1
+	ink 3
+	
+	'3...
+	locate 20,32: print "333 "
+	locate 21,32: print "   3"
+	locate 22,32: print " 33 "
+	locate 23,32: print "   3"
+	locate 24,32: print "333 "
+	psg 1,750
+	sleep 10
+	psg 1,-1
+	sleep 50
+	
+	'...2
+	locate 20,32: print " 22 "
+	locate 21,32: print "2  2"
+	locate 22,32: print "  2 "
+	locate 23,32: print " 2  "
+	locate 24,32: print "2222"
+	psg 1,750
+	sleep 10
+	psg 1,-1
+	sleep 50
+	
+	'1...
+	locate 20,32: print "  1 "
+	locate 21,32: print " 11 "
+	locate 22,32: print "  1 "
+	locate 23,32: print "  1 "
+	locate 24,32: print "1111"
+	psg 1,750
+	sleep 10
+	psg 1,-1
+	sleep 50
+	
+	'GO!
+	locate 20,32: print " 00 "
+	locate 21,32: print "0  0"
+	locate 22,32: print "0  0"
+	locate 23,32: print "0  0"
+	locate 24,32: print " 00 "
+	psg 1,971
+	sleep 10
+	psg 1,-1
+	sleep 10
+end sub
+	asm
+; ---------------------------------------------------------------------------
+; Subroutine to	display	patterns via the VDP
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+ShowVDPGraphics:			; XREF: SegaScreen; TitleScreen; SS_BGLoad
+		lea	($C00000).l,a6
+		move.l	#$800000,d4
+
+loc_142C:
+		move.l	d0,4(a6)
+		move.w	d1,d3
+
+loc_1432:
+		move.w	(a1)+,(a6)
+		dbf	d3,loc_1432
+		add.l	d4,d0
+		dbf	d2,loc_142C
+		rts	
+; End of function ShowVDPGraphics
+	end asm
+	asm
+LoadTilesAsm:              ; D0=Start tile , D3=tiles , A0=Source address
+; MOVEM.L D0-D3, -(A7)   ; modifying routines    
+ LSL.W  #5, D0
+ AND.L  #$FFFF, D0
+ LSL.W  #4, D3
+ SUBQ   #1, D3
+ MOVE.L #$40000000, D2  ; D2=VDP command
+ MOVE.L D0, D1
+ LSL.L  #2, D1
+ CLR.W  D1
+ SWAP   D1
+ OR.L   D1, D2          ; Add Address bits 14 and 15
+ AND.L  #$3FFF,D0
+ SWAP   D0
+ OR.L   D0, D2          ; Add rest of the Address bits
+ MOVE.L D2, (CPORT)     ; Write command+screen pointer
+ MOVE.L #DPORT, A1
+NextTileByte:
+ MOVE.W (A0)+, (A1)
+ DBRA   D3, NextTileByte
+; MOVEM.L (A7)+, D0-D3
+ RTS
+	end asm
+	asm
+; ---------------------------------------------------------------------------
+; Enigma decompression algorithm
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+EniDec:
+		movem.l	d0-d7/a1-a5,-(sp)
+		movea.w	d0,a3
+		move.b	(a0)+,d0
+		ext.w	d0
+		movea.w	d0,a5
+		move.b	(a0)+,d4
+		lsl.b	#3,d4
+		movea.w	(a0)+,a2
+		adda.w	a3,a2
+		movea.w	(a0)+,a4
+		adda.w	a3,a4
+		move.b	(a0)+,d5
+		asl.w	#8,d5
+		move.b	(a0)+,d5
+		moveq	#$10,d6
+
+loc_173E:				; XREF: loc_1768
+		moveq	#7,d0
+		move.w	d6,d7
+		sub.w	d0,d7
+		move.w	d5,d1
+		lsr.w	d7,d1
+		andi.w	#$7F,d1
+		move.w	d1,d2
+		cmpi.w	#$40,d1
+		bcc.s	loc_1758
+		moveq	#6,d0
+		lsr.w	#1,d2
+
+loc_1758:
+		bsr.w	sub_188C
+		andi.w	#$F,d2
+		lsr.w	#4,d1
+		add.w	d1,d1
+		jmp	loc_17B4(pc,d1.w)
+; End of function EniDec
+
+; ---------------------------------------------------------------------------
+
+loc_1768:				; XREF: loc_17B4
+		move.w	a2,(a1)+
+		addq.w	#1,a2
+		dbf	d2,loc_1768
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_1772:				; XREF: loc_17B4
+		move.w	a4,(a1)+
+		dbf	d2,loc_1772
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_177A:				; XREF: loc_17B4
+		bsr.w	loc_17DC
+
+loc_177E:
+		move.w	d1,(a1)+
+		dbf	d2,loc_177E
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_1786:				; XREF: loc_17B4
+		bsr.w	loc_17DC
+
+loc_178A:
+		move.w	d1,(a1)+
+		addq.w	#1,d1
+		dbf	d2,loc_178A
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_1794:				; XREF: loc_17B4
+		bsr.w	loc_17DC
+
+loc_1798:
+		move.w	d1,(a1)+
+		subq.w	#1,d1
+		dbf	d2,loc_1798
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_17A2:				; XREF: loc_17B4
+		cmpi.w	#$F,d2
+		beq.s	loc_17C4
+
+loc_17A8:
+		bsr.w	loc_17DC
+		move.w	d1,(a1)+
+		dbf	d2,loc_17A8
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_17B4:				; XREF: EniDec
+		bra.s	loc_1768
+; ---------------------------------------------------------------------------
+		bra.s	loc_1768
+; ---------------------------------------------------------------------------
+		bra.s	loc_1772
+; ---------------------------------------------------------------------------
+		bra.s	loc_1772
+; ---------------------------------------------------------------------------
+		bra.s	loc_177A
+; ---------------------------------------------------------------------------
+		bra.s	loc_1786
+; ---------------------------------------------------------------------------
+		bra.s	loc_1794
+; ---------------------------------------------------------------------------
+		bra.s	loc_17A2
+; ---------------------------------------------------------------------------
+
+loc_17C4:				; XREF: loc_17A2
+		subq.w	#1,a0
+		cmpi.w	#$10,d6
+		bne.s	loc_17CE
+		subq.w	#1,a0
+
+loc_17CE:
+		move.w	a0,d0
+		lsr.w	#1,d0
+		bcc.s	loc_17D6
+		addq.w	#1,a0
+
+loc_17D6:
+		movem.l	(sp)+,d0-d7/a1-a5
+		rts	
+; ---------------------------------------------------------------------------
+
+loc_17DC:				; XREF: loc_17A2
+		move.w	a3,d3
+		move.b	d4,d1
+		add.b	d1,d1
+		bcc.s	loc_17EE
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_17EE
+		ori.w	#-$8000,d3
+
+loc_17EE:
+		add.b	d1,d1
+		bcc.s	loc_17FC
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_17FC
+		addi.w	#$4000,d3
+
+loc_17FC:
+		add.b	d1,d1
+		bcc.s	loc_180A
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_180A
+		addi.w	#$2000,d3
+
+loc_180A:
+		add.b	d1,d1
+		bcc.s	loc_1818
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_1818
+		ori.w	#$1000,d3
+
+loc_1818:
+		add.b	d1,d1
+		bcc.s	loc_1826
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_1826
+		ori.w	#$800,d3
+
+loc_1826:
+		move.w	d5,d1
+		move.w	d6,d7
+		sub.w	a5,d7
+		bcc.s	loc_1856
+		move.w	d7,d6
+		addi.w	#$10,d6
+		neg.w	d7
+		lsl.w	d7,d1
+		move.b	(a0),d5
+		rol.b	d7,d5
+		add.w	d7,d7
+		and.w	word_186C-2(pc,d7.w),d5
+		add.w	d5,d1
+
+loc_1844:				; XREF: loc_1868
+		move.w	a5,d0
+		add.w	d0,d0
+		and.w	word_186C-2(pc,d0.w),d1
+		add.w	d3,d1
+		move.b	(a0)+,d5
+		lsl.w	#8,d5
+		move.b	(a0)+,d5
+		rts	
+; ---------------------------------------------------------------------------
+
+loc_1856:				; XREF: loc_1826
+		beq.s	loc_1868
+		lsr.w	d7,d1
+		move.w	a5,d0
+		add.w	d0,d0
+		and.w	word_186C-2(pc,d0.w),d1
+		add.w	d3,d1
+		move.w	a5,d0
+		bra.s	sub_188C
+; ---------------------------------------------------------------------------
+
+loc_1868:				; XREF: loc_1856
+		moveq	#$10,d6
+
+loc_186A:
+		bra.s	loc_1844
+; ---------------------------------------------------------------------------
+word_186C:	dc.w 1,	3, 7, $F, $1F, $3F, $7F, $FF, $1FF, $3FF, $7FF
+		dc.w $FFF, $1FFF, $3FFF, $7FFF,	$FFFF	; XREF: loc_1856
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+sub_188C:				; XREF: EniDec
+		sub.w	d0,d6
+		cmpi.w	#9,d6
+		bcc.s	locret_189A
+		addq.w	#8,d6
+		asl.w	#8,d5
+		move.b	(a0)+,d5
+
+locret_189A:
+		rts	
+; End of function sub_188C
+	end asm

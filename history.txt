@@ -1,0 +1,81 @@
+Version history - CrazyBus
+==========================
+2.00 (Momohime - 18/03/2010)
+Thanks to the YouTube(tm) community, i was reminded to blow off the dust from the code and the project :)
+- Built on the greatest and latest BasiEgaXorz 1.37
+- Crash-tested on Kega Fusion (3.63x) and Gens/GS (r7) under Linux x86_64
+- Dozens of fresh and hot pictures, now with more visual quality! (all those shots snagged by me, your host ;)
+- Almost total code rewrite
+- The "evil" music is now (slighty) customizable. Bring your own entropy by mashing buttons randomly! Run it on a PAL console for extra fun!
+- Optimized pictures using tilemaps. Less memory, more savings, we've gone green
+- Realistic sound for the bus horn (inspired on electric horns from some doubledecker busses)
+- Smooth scrolling on the bus selector (as it should have been implemented from the beginning :)
+- Fixed dozens of on-screen drawing bugs and artifacts
+- "Reverse" alarm, just like modern busses
+- Total overhaulin' to the playfield
+- Removed ALL debugging messages
+- And much more...
+I'm now waiting for your videos and your destructive comments! This version is dedicated to all those BoobTube critics...
+
+1.1 (29/10/05)
+- Now compiled with BEX 0.26 BETA, this fixes most minor BEX-related nasty bugs :P
+- Finally, fixed the nasty sound bugs on playfield related with horn and bus engine. Now bus horn sounds always when you hit A, and shutdowns when you release A (did not worked OK on earlier versions)
+- Also fixed some playfield drawing, replaced all PRINTs with DRAWTILEs & FOR loops. Now the "transparent" layer appears OK, with no gaps
+- Corrected some minor errors in the trades titlecard
+- As usual, minor cleanups here and there...
+- Now selected bus name appears in the playfield
+- Again, a minor correction to the Jum Buss model: i forgot the rear-view mirror!
+- Fixed random number generation... removed too many RANDOMIZEs that caused repeated numbers instead of "pure" random numbers. This should rotate between the many background images without too many effort.
+
+1.0 (09/09/05)
+- Heavy cleanup and optimizations in the code. Now CB should be 0.5% faster :)
+- More bus pics backgrounds, now these are random (sort of...)
+- Game can be restarted once started with C
+- Added two new bus models (ENT-6000 and GV1150)
+- Brand-new bus selector, now more informative and with real photos!
+- Added a alert for PAL-MDs users (BEX/CB not fully tested on PAL systems)
+- Changed crappy Vissta Buss model for a more realistic Jum Buss 360 (both looks almost the same thing)
+- Added credits for the Solobuses.com team (they provided most of the photos in this game)
+- Fixed some pad issues in the main playfield
+- Minor changes to the instructions screen (well, the new thing there is the CB logo)
+
+0.8 (27/11/04)
+- new cover bus (from a Venezuelan line... more realistic)
+- improved Vista Buss model
+- Copyright info screens now in english and spanish
+- some source cleanup and such things
+- fixed bus selector pics for Vista Buss and school bus models (ImaGenesis bug that added garbage around the tires and make transparent the tires center)
+
+0.7 (24/08/04)
+- Sound fixes here and there (bus engine sound now sounds more realist when bus is stopped)
+- Now text and pics are drawn on different layers, for add "transparent" texts.
+- Improved and fixed playfield
+- Major code cleanup
+- Tile loading speed fixes. Now graphics should load faster than ever!
+
+0.6 (22/08/04)
+- new logo
+- a new bus....
+- more eye candy... er.. pics
+- a sort of bg music on chooser
+- fixed a litte company logos (added a white bg, added anim for sega logo, etc)
+
+0.5 (20/08/04)
+- Added another bus model
+- Added a bus chooser
+- some cosmetic fixes here and there
+
+0.4 (19/08/04)
+- Added a couple of splashscreens
+- Added a legal info screen (for those bus compaanies,please don't sue me.... yet)
+- changed in-game bus model, from a personal draw, to another downloaded
+- added a bus pic to the playfield.
+
+0.3 (16/08/04)
+- Initial public release
+
+0.1 (??/08/04)
+- Initial release
+
+0.0 (somewhere in August, 2004)
+- Started work

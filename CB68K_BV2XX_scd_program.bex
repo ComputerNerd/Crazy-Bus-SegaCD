@@ -1,0 +1,1794 @@
+'CrazyBus - Venezuelan bus racing/RPG "experiment"
+'ONLY FOR SEGA(tm) Genesis(tm)/MegaDrive(tm)
+'Codigo en dominio publico o WTFPL, elije tu licencia :)
+'===========BEX 1.37 o superior es requerido para compilar esto=========
+'cb68k v2.00-branch (Momohime) 18/03/2010
+'core 2 - BEX sub/func build
+'
+'ROADMAP:
+'========
+'1.xx (noname - 29/10/2005): Ancient codebase
+'2.xx (Momohime - 19/03/2010): Picture/framework refresh
+'3.xx (Kisuke - TBA): Next Big Thing(tm)
+
+	option explicit
+	option title, "CrazyBus v2.00-RTM"
+	option string size, 48 			'racionamiento de RAM, decreto Ley
+	
+	'Informacion de la version
+	global codename as string * 16	'nombre interno de la version
+	global version as string * 8	'numero de la version
+	global fecha as string * 10		'fecha de la version
+	codename$ = "Momohime"
+	version$ = "2.00r030"
+	fecha$ = "19/03/2010"
+	
+	'variables de utilidad
+	global x as integer
+	global y as integer
+	global z as integer
+	
+	'Aca leemos el pad
+	global dr as integer
+	
+	'Bus seleccionado
+	global busID as integer
+	
+	'Variables para la musica y animaciones
+	global drop as integer
+	global gc as integer
+	
+	'Sprites:
+	global buz(27) as integer		'autobus (9x3)
+	global caucho(2) as integer		'cauchos
+	
+	
+'*************************
+'RECURSOS DE LA APLICACION
+'*************************
+
+'Botones (estilo U64)
+botones:
+	DATALONG	$00066000	'  A
+	DATALONG	$00666600
+	DATALONG	$06888860
+	DATALONG	$66866866
+	DATALONG	$66888866
+	DATALONG	$06866867
+	DATALONG	$00666670
+	DATALONG	$00066700
+
+	DATALONG	$000DD000	'  B
+	DATALONG	$00DDDD00
+	DATALONG	$0DD8DDD0
+	DATALONG	$DDD800DD
+	DATALONG	$DDD8D0DD
+	DATALONG	$0DD800D7
+	DATALONG	$00DDDD70
+	DATALONG	$000DD700
+	
+	DATALONG	$00099000	'  C
+	DATALONG	$00999900
+	DATALONG	$09988990
+	DATALONG	$99899999
+	DATALONG	$99899999
+	DATALONG	$09988997
+	DATALONG	$00999970
+	DATALONG	$00099700
+	
+	DATALONG	$00033000	'  START
+	DATALONG	$00333300
+	DATALONG	$03388330
+	DATALONG	$33833333
+	DATALONG	$33388333
+	DATALONG	$03333837
+	DATALONG	$00388370
+	DATALONG	$00033700
+
+'Paleta principal de la aplicacion
+pal_bg:
+	DATAINT	$0EEE,$0064,$0E0E,$000E,$0EE0,$00E0,$0E00,$0888
+	DATAINT	$0CEE,$00CC,$0808,$0008,$0880,$0080,$0000,$00EE	
+	
+'Paleta para el arranque
+pal_bg2:
+	DATAINT	$0000,$0EEE,$0E0E,$000E,$0EE0,$00E0,$0E00,$0888
+	DATAINT	$0CEE,$00CC,$0808,$0008,$0880,$0080,$0000,$00EE	
+	
+'logo CB (18*5=90)
+cblogo_pal:
+	DATAINT	$00E0,$0AAE,$088E,$066E,$022E,$000E,$0CCE,$0EEE
+	DATAINT	$0448,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+cblogo: datafile cblogo_n.tlf, bin
+
+'logo CB mini (10x8, mapped to 43 tiles)
+cblogo_bg_pal:
+	DATAINT	$0EE8,$0EE8,$0CCE,$0EEE,$0AAE,$0AAC,$0CC8,$0AA8
+	DATAINT	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+cblogo_bg: datafile cblogo_s.tmf, bin
+cblogo_bg_map: datafile cblogo_s.tmd, bin
+
+'fondo para el selector (10x8, mapped to 57 tiles)
+cb_bg_16_pal: 
+	DATAINT	$0CC6,$0CC6,$0EEE,$0CAC,$0ACE,$0868,$0668,$0686
+	DATAINT	$08AA,$0666,$0866,$0CCA,$0CAA,$0AAE,$0ACA,$06AA
+cb_bg_16: datafile cb_bg_16.tmf, bin
+cb_bg_16_map: datafile cb_bg_16.tmd, bin
+	
+	
+'******************
+'Tarjetas de titulo
+'******************
+
+'logotipo de Sega - 6 paletas para animacion.
+sp0:	
+	dataint $0000,$0EEE,$0400,$0000,$0400,$0000,$0400,$0000
+	dataint $0400,$0000,$0400,$0000,$0400,$0000,$0400,$0000
+sp1:	
+	dataint $0000,$0EEE,$0E20,$0E00,$0A00,$0800,$0E40,$0E60
+	dataint $0E80,$0EA0,$0000,$0000,$0000,$0000,$0000,$0000
+sp2:
+	dataint $0000,$0EEE,$0EA0,$0E20,$0E00,$0A00,$0800,$0E40
+	dataint $0E60,$0E80,$0000,$0000,$0000,$0000,$0000,$0000
+sp3:
+	dataint $0000,$0EEE,$0E80,$0EA0,$0E20,$0E00,$0A00,$0800
+	dataint $0E40,$0E60,$0000,$0000,$0000,$0000,$0000,$0000
+sp4:
+	dataint $0000,$0EEE,$0E60,$0E80,$0EA0,$0E20,$0E00,$0A00
+	dataint $0800,$0E40,$0000,$0000,$0000,$0000,$0000,$0000
+sp5:
+	dataint $0000,$0EEE,$0E40,$0E60,$0E80,$0EA0,$0E20,$0E00
+	dataint $0A00,$0800,$0000,$0000,$0000,$0000,$0000,$0000
+	
+SEGALOGO:
+	'12*4=48
+	datafile segalogo.tlf, bin
+	
+'logotipo personal + Devster logo
+'38*26 = 988 (mapped to 365 tiles)
+tslogo_pal:
+	DATAINT	$0CCC,$0CCC,$0222,$000E,$0C88,$0A66,$0E00,$00EE
+	DATAINT	$0E80,$0282,$0EAE,$0E4E,$06AE,$08C8,$00AC,$046E
+tslogo: datafile tslogo.tmf, bin
+tslogo_map: datafile tslogo.tmd, bin
+
+'marcas de los autobuses
+'35x28 = 980 (mapped to 512 tiles)
+brands_pal:
+	DATAINT	$0CCC,$0CCC,$0AAA,$0EEE,$0200,$000C,$0AAE,$0A86
+	DATAINT	$0864,$0842,$0CAA,$0CCA,$0ACC,$00EE,$0686,$0000
+brands: datafile busbrand.tmf, bin
+brands_map: datafile busbrand.tmd, bin
+
+'legalese crap (37x17=629)
+legal_pal:
+	DATAINT	$0EEE,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+	DATAINT	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+legal_es: datafile legal_es.tlf, bin 'english
+legal_en: datafile legal_en.tlf, bin 'español
+
+
+'**************************
+'Autobuses y campo de juego
+'**************************
+
+'modelos de autobuses ("rebanados" para sprites, 18x6=108)
+bus1_mdl: datafile cen_16k.tlf ,BIN		'Century
+bus2_mdl: datafile vbuss.tlf ,BIN		'Jum Buss
+bus3_mdl: datafile ENT6K_sl.tlf ,BIN	'ENT-6000
+bus4_mdl: datafile esc_slc.tlf ,BIN		'adivina...
+bus5_mdl: datafile GV1150sl.tlf ,BIN	'GV1150
+
+'Paletas de los autobuses
+bus1_pal:
+	DATAINT	$00E0,$0444,$0AAA,$0888,$0222,$0000,$0666,$0EEE
+	DATAINT	$0CCC,$0EE0,$000E,$00EE,$0000,$0000,$0000,$0000
+
+bus2_pal:
+	DATAINT	$0000,$0EEE,$0E00,$0EE8,$0800,$0666,$0EC2,$000E
+	DATAINT	$0888,$00EE,$0600,$0CCC,$000E,$0EEE,$00EE,$0000
+
+bus3_pal:
+	DATAINT	$00E0,$0444,$0EEE,$0046,$00EE,$0000,$0000,$0000
+	DATAINT	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+
+bus4_pal:
+	DATAINT	$0EEE,$04AE,$0CCC,$0EE0,$000E,$006E,$0000,$0E88
+	DATAINT	$0444,$00EE,$0666,$0000,$0000,$0000,$0000,$0000
+
+bus5_pal:
+	DATAINT	$00E0,$0444,$0EEE,$0222,$0422,$0CCC,$0AAA,$0224
+	DATAINT	$000E,$0462,$0480,$0260,$00EE,$0000,$0000,$0000
+
+'neumaticos (cauchos)
+cauchos:
+	'giro 1/2
+	DATALONG	$00000FFF	'  Tile: 0
+	DATALONG	$000FFFFF
+	DATALONG	$000FFFF8
+	DATALONG	$0FFFFFFF
+	DATALONG	$0FFFFFF8
+	DATALONG	$FFFFF888
+	DATALONG	$FF8FF877
+	DATALONG	$FF8F888F
+	DATALONG	$FF8F887F	'  Tile: 1
+	DATALONG	$FFFFF878
+	DATALONG	$FFFFF888
+	DATALONG	$0FFFFFF8
+	DATALONG	$0FFFFFFF
+	DATALONG	$000FFF88
+	DATALONG	$000FFFFF
+	DATALONG	$00000FFF
+	DATALONG	$FFF00000	'  Tile: 2
+	DATALONG	$FFFFF000
+	DATALONG	$88FFF000
+	DATALONG	$FFFFFFF0
+	DATALONG	$8FFFFFF0
+	DATALONG	$888FFFFF
+	DATALONG	$878FFFFF
+	DATALONG	$F788F8FF
+	DATALONG	$F888F8FF	'  Tile: 3
+	DATALONG	$778FF8FF
+	DATALONG	$888FFFFF
+	DATALONG	$8FFFFFF0
+	DATALONG	$FFFFFFF0
+	DATALONG	$8FFFF000
+	DATALONG	$FFFFF000
+	DATALONG	$FFF00000
+	'giro 2/2
+	DATALONG	$00000FFF	'  Tile: 0
+	DATALONG	$000FFFFF
+	DATALONG	$000FFFFF
+	DATALONG	$0FFF8FFF
+	DATALONG	$0FF8FFF8
+	DATALONG	$FFFFF888
+	DATALONG	$FFFFF887
+	DATALONG	$FFFF888F
+	DATALONG	$FFFF887F	'  Tile: 1
+	DATALONG	$FFFFF888
+	DATALONG	$FFFFF888
+	DATALONG	$0FF8FFF8
+	DATALONG	$0FFF8FFF
+	DATALONG	$000FFFFF
+	DATALONG	$000FFFFF
+	DATALONG	$00000FFF
+	DATALONG	$FFF00000	'  Tile: 2
+	DATALONG	$FFFFF000
+	DATALONG	$FFFFF000
+	DATALONG	$FFF8FFF0
+	DATALONG	$8FFF8FF0
+	DATALONG	$888FFFFF
+	DATALONG	$888FFFFF
+	DATALONG	$F788FFFF
+	DATALONG	$F888FFFF	'  Tile: 3
+	DATALONG	$788FFFFF
+	DATALONG	$888FFFFF
+	DATALONG	$8FFF8FF0
+	DATALONG	$FFF8FFF0
+	DATALONG	$FFFFF000
+	DATALONG	$FFFFF000
+	DATALONG	$FFF00000
+
+'rejilla del fondo ("carretera")
+rc1:
+	DATALONG	$70707070	'  Tile: 0
+	DATALONG	$07070707
+	DATALONG	$70707070
+	DATALONG	$07070707
+	DATALONG	$70707070
+	DATALONG	$07070707
+	DATALONG	$70707070
+	DATALONG	$07070707
+rc2:
+	DATALONG	$11001100	'  Tile: 0
+	DATALONG	$00110011
+	DATALONG	$11001100
+	DATALONG	$00110011
+	DATALONG	$11001100
+	DATALONG	$00110011
+	DATALONG	$11001100
+	DATALONG	$00110011
+rc3:
+	DATALONG	$11111111	'  Tile: 0
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+
+'Paleta extra...
+pal_16w32:
+	DATAINT	$0EEE,$00EE,$0E0E,$000E,$0EE0,$00E0,$0E00,$0888
+	DATAINT	$0CCC,$0088,$0808,$0008,$0880,$0080,$0800,$0000		
+
+
+'*************************
+'Fondos - Pantalla inicial
+'*************************
+bg_m_01_pal:
+	datafile	bg_m_01.png.pal,bin
+'bg_m_01_tile:
+'	datafile	bg_m_01.png.pat,bin
+bg_m_01_map:
+	datafile	bg_m_01.png.nam,bin
+bg_m_02_pal:
+	datafile	bg_m_02.png.pal,bin
+'bg_m_02_tile:
+'	datafile	bg_m_02.png.pat,bin
+bg_m_02_map:
+	datafile	bg_m_02.png.nam,bin
+bg_m_03_pal:
+	datafile	bg_m_03.png.pal,bin
+'bg_m_03_tile:
+'	datafile	bg_m_03.png.pat,bin
+bg_m_03_map:
+	datafile	bg_m_03.png.nam,bin
+bg_m_04_pal:
+	datafile	bg_m_04.png.pal,bin
+'bg_m_04_tile:
+'	datafile	bg_m_04.png.pat,bin
+bg_m_04_map:
+	datafile	bg_m_04.png.nam,bin
+bg_m_05_pal:
+	datafile	bg_m_05.png.pal,bin
+'bg_m_05_tile:
+'	datafile	bg_m_05.png.pat,bin
+bg_m_05_map:
+	datafile	bg_m_05.png.nam,bin
+bg_m_06_pal:
+	datafile	bg_m_06.png.pal,bin
+'bg_m_06_tile:
+'	datafile	bg_m_06.png.pat,bin
+bg_m_06_map:
+	datafile	bg_m_06.png.nam,bin
+'	addscd	bg_m_mergerd.pat
+
+'**********************************
+'Fondos - Pantalla de instrucciones
+'**********************************
+bg_i_01_pal:
+	datafile	bg_i_01.png.pal,bin
+'bg_i_01_tile:
+'	datafile	bg_i_01.png.pat,bin
+bg_i_01_map:
+	datafile	bg_i_01.png.nam,bin
+bg_i_02_pal:
+	datafile	bg_i_02.png.pal,bin
+'bg_i_02_tile:
+'	datafile	bg_i_02.png.pat,bin
+bg_i_02_map:
+	datafile	bg_i_02.png.nam,bin
+bg_i_03_pal:
+	datafile	bg_i_03.png.pal,bin
+'bg_i_03_tile:
+'	datafile	bg_i_03.png.pat,bin
+bg_i_03_map:
+	datafile	bg_i_03.png.nam,bin
+bg_i_04_pal:
+	datafile	bg_i_04.png.pal,bin
+'bg_i_04_tile:
+'	datafile	bg_i_04.png.pat,bin
+bg_i_04_map:
+	datafile	bg_i_04.png.nam,bin
+bg_i_05_pal:
+	datafile	bg_i_05.png.pal,bin
+'bg_i_05_tile:
+'	datafile	bg_i_05.png.pat,bin
+bg_i_05_map:
+	datafile	bg_i_05.png.nam,bin
+bg_i_06_pal:
+	datafile	bg_i_06.png.pal,bin
+'bg_i_06_tile:
+'	datafile	bg_i_06.png.pat,bin
+bg_i_06_map:
+	datafile	bg_i_06.png.nam,bin
+
+
+
+'***********************
+'Fondos - Campo de juego
+'***********************
+
+bg_f_01_pal: '584
+	DATAINT	$0000,$0000,$0200,$0444,$0AAA,$0888,$0AA8,$0CCC
+	DATAINT	$0222,$0002,$0CCA,$0EEE,$0864,$0000,$0000,$0000
+'bg_f_01: datafile bg_f_01.tmf, bin
+bg_f_01_map: datafile bg_f_01.tmd, bin
+
+bg_f_02_pal: '853
+	DATAINT	$0CCA,$0CCA,$0886,$0686,$0466,$0866,$0688,$0868
+	DATAINT	$0468,$0442,$0424,$0042,$0244,$0022,$0024,$0422
+'bg_f_02: datafile bg_f_02.tmf, bin
+bg_f_02_map: datafile bg_f_02.tmd, bin
+
+bg_f_03_pal: '850
+	DATAINT	$0AAA,$0AAA,$08A8,$0888,$0CCC,$0886,$0666,$0466
+	DATAINT	$0442,$0422,$0446,$0224,$0222,$0000,$0000,$0000
+'bg_f_03: datafile bg_f_03.tmf, bin
+bg_f_03_map: datafile bg_f_03.tmd, bin
+
+bg_f_04_pal: '732
+	DATAINT	$0EEE,$0EEE,$0EEC,$0CCA,$0AA8,$0AAA,$0866,$0642
+	DATAINT	$0442,$0444,$0422,$0220,$0200,$0222,$0000,$0000
+'bg_f_04: datafile bg_f_04.tmf, bin
+bg_f_04_map: datafile bg_f_04.tmd, bin
+
+bg_f_05_pal: '585
+	DATAINT	$00AC,$00AC,$008A,$008C,$0268,$0068,$0046,$0244
+	DATAINT	$0022,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+'bg_f_05: datafile bg_f_05.tmf, bin
+bg_f_05_map: datafile bg_f_05.tmd, bin
+
+bg_f_06_pal: '529
+	DATAINT	$0000,$0000,$0422,$0442,$0644,$0864,$0042,$00A4
+	DATAINT	$0A86,$0CCC,$0024,$0624,$0A6A,$0044,$00CA,$024C
+'bg_f_06: datafile bg_f_06.tmf, bin
+bg_f_06_map: datafile bg_f_06.tmd, bin
+
+
+'*********************
+'Recursos del selector
+'*********************
+
+'LOGOS DE LOS FABRICANTES
+'Logo ENCAVA 9x3=27 tiles	
+elogo_pal:
+	DATAINT	$0000,$0000,$00EE,$0000,$0000,$0000,$0000,$0000
+	DATAINT	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+elogo: datafile logo_e.tlf ,BIN
+	
+'Logo Busscar 16x4=64 tiles
+blogo_pal:
+	DATAINT	$0CCC,$0CCC,$0EEE,$0866,$0822,$0620,$0862,$0C88
+	DATAINT	$08CC,$0888,$0886,$0C86,$00CE,$0268,$0CC8,$0000
+blogo: datafile logo_b.tlf ,BIN
+
+'Logo Irizar 11x3=33 tiles
+ilogo_pal:
+	DATAINT	$0CCC,$0CCC,$0AAA,$0EEE,$0222,$0000,$0CCE,$066C
+	DATAINT	$000C,$0888,$0444,$0666,$0006,$0AAE,$022C,$0000
+ilogo: datafile logo_i.tlf ,BIN
+	
+'Logo Marcopolo 13x3=39 tiles
+mlogo_pal:
+	DATAINT	$0CAA,$0CAA,$0AAA,$0EEE,$0424,$0222,$0422,$0CCC
+	DATAINT	$0224,$0444,$0688,$0442,$08AE,$068E,$006E,$0000
+mlogo: datafile logo_m.tlf ,BIN
+
+'VISTAS PREVIAS DE LOS AUTOBUSES (24x15)
+'IC395: optimized to 311
+bus01p_i_pal:
+	DATAINT	$0688,$0244,$0220,$0444,$0222,$0000,$0200,$0620
+	DATAINT	$0464,$0C88,$0CCC,$0EEE,$0020,$0CEE,$0688,$0042
+bus01p_i: datafile bus01p_i.tmf, bin
+bus01p_i_map: datafile bus01p_i.tmd, bin
+
+'JB360: optimized to 359
+bus02p_b_pal:
+	DATAINT	$0CCC,$0CCC,$08AA,$0888,$0444,$0422,$0222,$0224
+	DATAINT	$0220,$0022,$0244,$0266,$0666,$0020,$0268,$0000
+bus02p_b: datafile bus02p_b.tmf, bin
+bus02p_b_map: datafile bus02p_b.tmd, bin
+
+'ENT6100: optimized to 315
+bus03p_e_pal:
+	DATAINT	$0EEE,$0EEE,$0EEC,$0EC8,$0CA8,$0A84,$0666,$0840
+	DATAINT	$0444,$0440,$0220,$0420,$0620,$0200,$0000,$0000
+bus03p_e: datafile bus03p_e.tmf, bin
+bus03p_e_map: datafile bus03p_e.tmd, bin
+
+'GEN_ESC: optimized to 357
+bus04p_s_pal:
+	DATAINT	$0CCC,$0AAA,$0CCC,$0EEE,$0ACE,$0688,$0888,$0666
+	DATAINT	$06AC,$046A,$0244,$0248,$004A,$0000,$0024,$0002
+bus04p_s: datafile bus04p_s.tmf, bin
+bus04p_s_map: datafile bus04p_s.tmd, bin
+
+'PGV1150: optimized to 350
+bus05p_m_pal:
+	DATAINT	$0EEE,$0CCA,$0EEE,$0AAA,$0ACE,$0666,$0668,$0446
+	DATAINT	$0424,$0466,$0222,$0224,$08AA,$08AE,$068C,$0000
+bus05p_m: datafile bus05p_m.tmf, bin
+bus05p_m_map: datafile bus05p_m.tmd, bin
+
+
+
+'**********
+'entrypoint
+'**********
+	main
+
+'Programa principal
+declare sub main()
+
+	'Inicializar los numeros "supuestamente" aleatorios
+	randomize
+
+	'Callar PSG al reiniciar
+	psgvol 0, 0: psgvol 1, 0: psgvol 2, 0: psgvol 3, 0
+	'Cargamos nuestros lindos botones estilo U64...
+	loadtiles botones, 4, 1
+	pallettes pal_bg2, 0, 0, 16
+	
+	'TODO: PAL warning
+	if tvtype() = 1 then
+		PALWarning
+	endif
+	
+	drawSEGALogo
+	boringAds
+	copyFight
+	
+	settextplane scroll_b
+	cls
+	settextplane scroll_a
+	cls
+	pallettes pal_bg2, 0, 0, 16
+	ink 0
+	cls
+	
+	while 1
+		'El juego corre dentro de este bucle infinito:
+		'pantalla inicial->selector->instrucciones->juego->pantalla inicial
+		splashScreen
+		Blackness
+		sleep 20
+		selBus
+		Blackness
+		sleep 20
+		getReady
+		Blackness
+		sleep 20
+		gameOn
+		Blackness
+		sleep 20
+	wend
+end sub
+
+
+'***************
+'Rutinas comunes
+'***************
+
+' Mairtrus: 'd5.l=mapa d0=X, d1=Y, d2=Largo, d3=Alto, d4=Opcional
+Declare Asm Sub DrawTiles16(d5.l, d0.w, d1.w, d2.w, d3.w, d4.w)	
+	movea.l	d5,a0
+	subq.b	#1,d2
+	subq.b	#1,d3
+	move.w	#$2700,sr
+	and.l	#63,d0
+	and.l	#63,d1
+	and.l	#511,d2
+	and.l	#511,d3
+	lsl.w	#6,d1
+	add.w	d1,d0
+	move.w	d2,d1
+	lsl.l	#3,d0
+	lsr.w	#2,d0
+	swap	d0
+	add.l	(GFX_PLANE),d0
+	move.w	#$8F02,4(a4)
+@1:
+	move.l	d0,4(a4)
+@2:
+	move.w	(a0)+,d7
+	add.w	d4,d7
+	move.w	d7,(a4)
+	dbf	d2,@2
+	add.l	#$800000,d0
+	move.w	d1,d2
+	dbf	d3,@1
+	move.w	#$2000,sr
+End Sub
+
+'Limpiar todo
+declare sub Blackness()
+	disable screen
+	ink 0
+	pallette &h0000, 0, 0
+	settextplane scroll_a
+	cls
+	settextplane scroll_b
+	cls
+	enable screen
+end sub
+
+
+'*********************
+'Inicializacion & cia.
+'*********************
+
+'CrazyBus podria verse terrible en televisores PAL
+'(de hecho, corre demasiado rapido en emuladores)
+'asi que hacemos una advertencia.
+declare sub PALWarning()
+	'cambiar a modo PAL
+	TVSet 1
+	loadtiles cblogo,90,256
+	pallettes cblogo_pal,2,0,16
+	sleep 1
+	ink 2
+
+	drawtilesinc 256,11,2,18,5
+
+	pallette &h0006,0,0
+	pallette &h000e,3,1
+	ink 3
+	locate 10, 8
+	print "CONSOLA PAL DETECTADA!"
+	ink 0
+	locate 12, 3: print "La compatibilidad con equipos PAL"
+	locate 13, 3: print "NO ha sido bien probada.  Podrian"
+	locate 14, 3: print "ocurrir fallos,  como defectos de"
+	locate 15, 3: print "video, audio, o lentitud general."  
+	locate 16, 3: print "Se sugiere el uso  de una Genesis"
+	locate 17, 3: print "o MegaDrive NTSC para una corrida"
+	locate 18, 3: print "optima."
+	
+	locate 24,10: print "Presiona " + chr$(4) + " para continuar!"
+	
+	dr = 0
+	while dr = 0
+		dr = joypad(0)
+		waitpadup 0
+		if dr.7 then
+			settextplane scroll_b
+			cls
+			settextplane scroll_a
+			cls
+			exit sub
+		endif
+		sleep 1
+		dr = 0
+	wend
+end sub
+
+'Dibujar el logo de SEGA
+declare sub drawSEGALogo()
+	disable screen
+	cls
+	scroll LEFT, 200
+	loadtiles SEGALOGO, 48, 256
+	pallettes sp0, 0, 0, 16
+	drawtilesinc 256, 13, 12, 12, 4
+	enable screen
+	gc = 2
+	for x = 1 to 200
+		'Introducir el logo de SEGA(tm)
+		scroll RIGHT, 1
+		if x % 3 = 0 then
+			motor
+			sleep 1
+		endif
+	next x
+	gc = 0
+	motor
+	pallettes sp1,0,0,16
+	'un par de cornetazos...
+	horn 1
+	sleep 5
+	horn 0
+	sleep 5
+	horn 1
+	sleep 10
+	horn 0
+	pallettes sp2,0,0,16
+	sleep 10
+	pallettes sp3,0,0,16
+	sleep 10
+	pallettes sp4,0,0,16
+	sleep 10
+	pallettes sp5,0,0,16
+	sleep 20
+end sub
+
+'Tarjetas de titulo
+declare sub boringAds()
+	ink 0
+	'logo TS/Devster
+	disable screen
+	pallettes tslogo_pal, 0, 0, 16
+	loadtiles tslogo, 365, 256
+	DrawTiles16 lblptr&(tslogo_map),  1, 1, 38, 26, 256
+	enable screen
+	sleep 70
+	
+	'logo marcas
+	disable screen
+	cls
+	'marcas...
+	pallettes brands_pal, 0, 0, 16
+	loadtiles brands, 512, 256
+	DrawTiles16 lblptr&(brands_map),  2, 0, 35, 28, 256
+	enable screen
+	sleep 70
+end sub
+
+'Pajas legales y todo eso
+declare sub copyFight()
+	disable screen
+	cls
+	'Dibujar el fondito...
+	settextplane scroll_a
+	setgfxplane scroll_b
+	pallettes cblogo_bg_pal, 2, 0, 16
+	pallettes legal_pal, 3, 0, 16
+	loadtiles cblogo_bg, 43, 256
+	loadtiles legal_en, 629, 299
+
+	for y = 0 to 28 step 7
+		for x = 0 to 30 step 10
+		DrawTiles16 lblptr&(cblogo_bg_map),  x, y, 10, 7, 256+pallette(2)
+		next x
+	next y
+	
+	enable screen
+	locate 0,0
+	pallette 0,0,1
+	pallette 13,1,1
+	'engrish
+	ink 1
+	print "CrazyBus(tm) - Legal chit-chat"
+	print "====================================="
+	ink 0
+	print "(C)2004-2010 by Tom Maneiro."
+	print "Some rights reserved"
+	print "Contact: <tomman@tsdx.net.ve>"
+	ink 3
+	setgfxplane scroll_a
+	drawtilesinc 299, 1, 7, 37, 17
+	ink 1
+	locate 24,0
+	print "ver." + version$ + " - " + fecha$ + " (" + codename$ + ")"
+	sleep 75
+	cls
+	loadtiles legal_es, 629, 299
+	'español...
+	ink 1
+	print "CrazyBus(tm) - Bla-bla-bla legal"
+	print "====================================="
+	ink 0
+	print "(C)2004-2010 por Tom Maneiro."
+	print "Algunos derechos reservados"
+	print "Contacto: <tomman@tsdx.net.ve>"
+	ink 3
+	setgfxplane scroll_a
+	drawtilesinc 299, 1, 7, 37, 17
+	ink 1
+	locate 24,0
+	print "ver." + version$ + " - " + fecha$ + " (" + codename$ + ")"
+	sleep 75
+	
+end sub
+
+'Dibujar la pantalla de titulo
+declare sub drawSplash()
+	disable screen
+	cls
+	settextplane scroll_b
+	cls
+	settextplane scroll_a
+	setgfxplane scroll_b
+	
+	'Cargar el logo de CB...
+	loadtiles cblogo,90,128
+	pallettes cblogo_pal,2,0,16
+	'restaurar paleta para textos y botones
+	pallettes pal_bg2, 0, 0, 16
+	
+	'Tenemos 6 fondos, asi que elegimos uno al azar:
+	z = rnd(6)
+	dim capt as string
+	capt$ = ""
+	select case z
+		'Paso 1: cargar imagen de fondo
+		'Paso 2: dibujar fondo
+		'Paso 3: Fijar el primer color de la primera paleta para que el
+		'        texto sea legible sobre la imagen de fondo
+		'Paso 4: Etiquetar la foto :)
+		bgcolor 1,0
+		ink 1
+		print	"loading"
+		case 0
+			pallettes bg_m_01_pal, 1, 0, 16
+			'loadtiles bg_m_01_tile, 947, 218
+			'LoadSCD 2, VRAM, 0, 6976, 947
+			DrawTiles16 lblptr&(bg_m_01_map),  0, 0, 40, 28, 218+pallette(1)
+			'pallette &h00CE, 0, 1
+			capt$ = "   Cover bus: Busscar Panoramico DD  "
+			exit case
+		case 1
+			pallettes bg_m_02_pal, 1, 0, 15
+			'loadtiles bg_m_02_tile, 993, 218
+			'LoadSCD 2, VRAM, 30304, 6976, 993
+			DrawTiles16 lblptr&(bg_m_02_map),  0, 0, 40, 28, 218+pallette(1)
+			'pallette &h0EC0, 0, 1
+			capt$ = "    Cover bus: Irizar Century 3.95   "
+			exit case
+		case 2
+			pallettes bg_m_03_pal, 1, 0, 16
+			'loadtiles bg_m_03_tile, 1017, 218
+			'LoadSCD 2, VRAM, 62080, 6976, 1017
+			DrawTiles16 lblptr&(bg_m_03_map),  0, 0, 40, 28, 218+pallette(1)
+			'pallette &h060E, 0, 1
+			capt$ = "  Cover bus:  Marcopolo Andare Class "
+			exit case
+		case 3
+			pallettes bg_m_04_pal, 1, 0, 16
+			'loadtiles bg_m_04_tile, 1044, 218
+			'LoadSCD 2, VRAM, 95488, 6976, 1044
+			DrawTiles16 lblptr&(bg_m_04_map),  0, 0, 40, 28, 218+pallette(1)
+			'pallette &h00EA, 0, 1
+			capt$ = " Cover bus: Marcopolo Paradiso GV1450"
+			exit case
+		case 4
+			pallettes bg_m_05_pal, 1, 0, 16
+			'loadtiles bg_m_05_tile, 1060, 218
+			'LoadSCD 2, VRAM, 129408, 6976, 1060
+			DrawTiles16 lblptr&(bg_m_05_map),  0, 0, 40, 28, 218+pallette(1)
+			'pallette &h00EE, 0, 1
+			capt$ = "   Cover bus: Busscar Panoramico DD  "
+			exit case
+		case else
+			pallettes bg_m_06_pal, 1, 0, 16
+			'loadtiles bg_m_06_tile, 1063, 218
+			'LoadSCD 2, VRAM, 163424, 6976, 1063
+			DrawTiles16 lblptr&(bg_m_06_map),  0, 0, 40, 28, 218+pallette(1)
+			'pallette &h0EE0, 0, 1
+			capt$ = " Cover bus: Marcopolo Paradiso 1800DD"
+			exit case
+	end select
+	enable screen
+	sleep 10
+	
+	setgfxplane scroll_a
+	'Dibujar nuestro bello logo en SCROLL_A junto al bla-bla bla
+	ink 2
+	drawtilesinc 128,11,8,18,5
+	
+	'Dibujar el resto de la informacion que va en esta pantalla
+	ink 0
+	locate 16,18: print "Presiona " + chr$(4) + "!"
+	locate 20, 0: print "  (C)2004-2010 por Tom Scripts LTDA. "
+	locate 21, 0: print "Portions by: DevSter, Mairtrus, theelf"
+	locate 22, 0: print "Fotografias:  (C)2006-2009 Tom Maneiro"
+	locate 24, 0: print capt$
+	locate 26 ,0
+	print "HECHO EN VENEZUELA - MADE IN VENEZUELA"
+end sub
+
+'Pantalla de titulo con fondos aleatorios
+declare sub splashScreen()
+	'Dibujar...
+	drawSplash
+		
+	'La musica y las animaciones van en las interrupciones
+	on vblank gosub aniSplash_stub
+	enable interrupt vblank
+	'Animar pantalla y preguntar por el pad...
+	drop = 0
+	psgvol 0,15: psgvol 1,15: psgvol 2,15
+	dr = 0
+	while dr = 0
+		dr = joypad(0)
+		waitpadup 0
+		
+		'"aleatorizar" mas los numeros si se presiono un boton
+		if dr > 0 then
+			randomize
+		endif
+		
+		if dr.7 then
+			'Callar musiquita y animaciones
+			disable interrupt vblank
+			psgvol 0,0: psgvol 1,0: psgvol 2,0
+			'Podriamos saltar a los menus aqui, pero mejor no desperdiciar 
+			'tanto espacio en la pila... porque mas tarde PODRIAMOS necesitarlo :)
+			exit sub
+		endif
+		sleep 1
+		dr = 0
+	wend
+end sub
+
+
+'*********************
+'Selector de autobuses
+'*********************
+
+'Dibujar fondo del selector
+declare sub DrawSelBG()
+	disable screen
+	settextplane scroll_b
+	cls
+	settextplane scroll_a
+	cls
+	
+	'Recargar fuente y botones
+	loadfont
+	loadtiles botones, 4, 1
+	
+	'Mapa de paletas:
+	'================
+	'0: fuente + botones
+	'1: fondo
+	'2: autobus
+	'3: logotipo
+	
+	'un colorcito decente para dibujar
+	pallette &h0C00, 0, 1
+	
+	'le fondo va en le capa B
+	setgfxplane scroll_b
+	loadtiles cb_bg_16,57,192
+	pallettes cb_bg_16_pal,1,0,16
+	
+	for y = 0 to 24 step 8
+		for x = 0 to 30 step 10
+		DrawTiles16 lblptr&(cb_bg_16_map),  x, y, 10, 8, 192+pallette(1)
+		next x
+	next y
+	
+	'ñ = chr$(164)
+	'Ñ = chr$(165)
+	
+	'Rotulos
+	ink 0
+	locate 0, 2: print "Modelo"
+	locate 2, 2: print "Origen: ??????????"
+	locate 3, 2: print "Altura: 0.00m (SD)"
+	'locate 5, 2: print "*******INFOTAGS*********"
+	'locate 6, 2: print "*******INFOTAGS*********"
+	locate 8, 2: print "==>Selecciona un bus!<=="
+	locate 12,28: print "Motor:"
+	locate 13,29: print "000HP"
+	locate 15,28: print "Puestos:"
+	locate 16,29: print "00 (max)"
+	locate 18,27: print "[  <- ->  ]"
+	locate 19,27: print "Cambiar bus"
+	locate 21,27: print "[    " + chr$(4) + "    ]"
+    locate 22,27: print "Seleccionar"
+	enable screen
+end sub
+
+'El selector en si
+declare sub selBus()
+	'Poner el fondo...
+	DrawSelBG
+	
+	'Dibujar el primer bus
+	showBus 0, 0
+	showBus 0, 1
+	
+	'La musica y las animaciones van en las interrupciones
+	on vblank gosub aniSelector_stub
+	enable interrupt vblank
+	'Animar pantalla y preguntar por el pad...
+	drop = 0
+	psgvol 0,15: psgvol 1,15: psgvol 2,15
+
+	busID = 0
+	dr = 0
+	while dr = 0
+		dr = joypad(0)
+		waitpadup 0
+		
+		if dr.2 then		'izquierda
+			'Bus anterior
+			if busID > 0 then
+				busID--
+			elseif busID = 0 then
+				busID = 4
+			endif
+			scrollBus 0
+		elseif dr.3 then	'derecha
+			'Siguiente bus
+			if busID < 4 then
+				busID++
+			elseif busID = 4 then
+				busID = 0
+			endif
+			scrollBus 1
+		elseif dr.7 then	'START
+			'Callar musiquita y animaciones
+			disable interrupt vblank
+			psgvol 0,0: psgvol 1,0: psgvol 2,0
+			'Salimos de aca
+			'(ya tenemos nuestra seleccion en busID)
+			exit sub
+		endif
+		sleep 1
+		dr = 0
+	wend
+end sub
+
+'Desplazar en pantalla de seleccion
+declare sub scrollBus(dir as integer)
+	'Direcciones: 0 = atras, 1 = adelante
+
+	if dir = 1 then			'izquierda
+		for z = 1 to 512
+			scroll left, 1
+			'Pausar cada 16 pixeles para no hacer tan volado
+			'el desplazamiento de paginas
+			if z % 16 = 0 then
+				sleep 1
+			endif
+			'BEX 1.37 BUG: SELECT CASE provoca que el desplazamiento se ahogue
+			'              espantosamente tras dibujar la foto del autobus (!!!)
+			'              Con IF/ELSE no existe tal perdida de rendimiento
+			if z = 216 then
+			'select case z
+			'	case 216
+					'-216: foto
+					showbus busID, 1
+			'		exit case
+			elseif z = 312 then
+			'	case 312
+					'-312: logo
+					showbus busID, 0
+			'		exit case
+			'end select
+			endif
+		next z
+	else if dir = 0 then	'derecha
+		for z = 1 to 512
+			scroll right, 1
+			'idem idem...
+			if z % 16 = 0 then
+				sleep 1
+			endif
+			if z = 144 then
+			'select case z
+			'	case 144
+					'+144: logo
+					showbus busID, 0
+			'		exit case
+			elseif z = 296 then
+			'	case 296
+					'+296: foto
+					showbus busID, 1
+			'		exit case
+			'end select
+			endif
+		next z
+	endif
+end sub
+
+'Mostrar autobus en pantalla
+declare sub showBus(bus as integer, part as integer)
+	'IDs de autobuses:
+	'0 = Irizar Century 3.95
+	'1 = Busscar Jum Buss 360
+	'2 = ENCAVA E-NT6000
+	'3 = Escolar generico
+	'4 = Marcopolo Paradiso GV1150
+	
+	'Parte a dibujar:
+	'1 = foto + infotag principal
+	'0 = logo + infotag secundario
+	
+	setgfxplane scroll_a
+	
+	'Borrar el area del logo, ya que los tenemos de diferentes tamaños
+	'El mas grande que tenemos es el de Busscar (16x4), asi que usamos
+	'ese tamaño para hacer la limpieza
+	if part = 0 then
+		for y = 1 to 4
+			for x = 1 to 16
+				DrawTile 0, 21+x, 0+y
+			next x
+		next y
+	endif
+	
+	select case bus
+		case 0
+			'Century 3.95
+			if part = 0 then
+				loadtiles ilogo, 33, 256
+				pallettes ilogo_pal, 3, 0, 16
+				ink 3
+				DrawTilesInc 256, 27, 1, 11, 3
+				ink 0
+				locate 13,29: print "360HP"
+				locate 16,29: print "50 (max)"
+			elseif part = 1 then
+				loadtiles bus01p_i, 311, 320
+				pallettes bus01p_i_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus01p_i_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "Century 3.95   "
+				locate 2,10: print "Espa" + chr$(164) + "a    "
+				locate 3,10: print "3.95M (SD)"
+				locate 5, 2: print "Autobus de lujo superior"
+				locate 6, 2: print "Mejor con Mercedes-Benz "
+			endif
+			exit case
+		case 1
+			'Jum Buss 360
+			if part = 0 then
+				loadtiles blogo, 64, 256
+				pallettes blogo_pal, 3, 0, 16
+				ink 3
+				DrawTilesInc 256, 22, 1, 16, 4
+				ink 0
+				locate 13,29: print "360HP"
+				locate 16,29: print "52 (max)"
+			elseif part = 1 then
+				loadtiles bus02p_b, 359, 320
+				pallettes bus02p_b_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus02p_b_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "Jum Buss 360   "
+				locate 2,10: print "Brasil    "
+				locate 3,10: print "3.60M (SD)"
+				locate 5, 2: print "Autobus muy duradero    "
+				locate 6, 2: print "Optimo con chasis Scania"
+			endif
+			exit case
+		case 2
+			'E-NT6000
+			if part = 0 then
+				loadtiles elogo, 27, 256
+				pallettes elogo_pal, 3, 0, 16
+				ink 3
+				DrawTilesInc 256, 29, 1, 9, 3
+				ink 0
+				locate 13,29: print "300HP"
+				locate 16,29: print "40 (max)"
+			elseif part = 1 then
+				loadtiles bus03p_e, 315, 320
+				pallettes bus03p_e_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus03p_e_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "E-NT6000       "
+				locate 2,10: print "Venezuela "
+				locate 3,10: print "2.80M (SD)"
+				locate 5, 2: print "Modelo para rutas cortas"
+				locate 6, 2: print "Chasis personalizado    "
+			endif
+			exit case
+		case 3
+			'Escolar
+			if part = 0 then
+				'no logo...
+				ink 0
+				locate 13,29: print "200HP"
+				locate 16,29: print "60 (max)"
+			elseif part = 1 then
+				loadtiles bus04p_s, 357, 320
+				pallettes bus04p_s_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus04p_s_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "Autobus escolar"
+				locate 2,10: print "??????????"
+				locate 3,10: print "2.50M (SD)"
+				locate 5, 2: print "Clasico amarillo escolar"
+				locate 6, 2: print "Configuracion variable  "
+			endif
+			exit case
+		case 4
+			'Paradiso GV1150
+			if part = 0 then
+				loadtiles mlogo, 39, 256
+				pallettes mlogo_pal, 3, 0, 16
+				ink 3
+				DrawTilesInc 256, 25, 1, 13, 3
+				ink 0
+				locate 13,29: print "340HP"
+				locate 16,29: print "52 (max)"
+			elseif part = 1 then
+				loadtiles bus05p_m, 350, 320
+				pallettes bus05p_m_pal, 2, 0, 16
+				DrawTiles16 lblptr&(bus05p_m_map),  3, 10, 24, 15, 320+pallette(2)
+				ink 0
+				locate 0, 2: print "Paradiso GV1150"
+				locate 2,10: print "Brasil    "
+				locate 3,10: print "3.55M (SD)"
+				locate 5, 2: print "Legendario de las vias  "
+				locate 6, 2: print "Favorito para Volvo     "
+			endif
+			exit case
+	end select
+end sub
+
+'Pantalla de instrucciones
+declare sub getReady()
+	disable screen
+	cls
+	settextplane scroll_b
+	cls
+	settextplane scroll_a
+	setgfxplane scroll_b
+	
+	'Cargar el logo de CB...
+	loadtiles cblogo,90,128
+	pallettes cblogo_pal,2,0,16
+	'restaurar paleta para textos y botones
+	pallettes pal_bg2, 0, 0, 16
+	
+	'Tenemos 6 fondos, asi que elegimos uno al azar:
+	z = rnd(6)
+	dim capt as string
+	capt$ = ""
+	select case z
+		'Paso 1: cargar imagen de fondo
+		'Paso 2: dibujar fondo
+		'Paso 3: Fijar el primer color de la primera paleta para que el
+		'        texto sea legible sobre la imagen de fondo
+		'Paso 4: No hay paso 4 en esta pantalla :P
+		case 0
+			pallettes bg_i_01_pal, 1, 0, 16
+			'loadtiles bg_i_01, 1069, 218
+			DrawTiles16 lblptr&(bg_i_01_map),  0, 0, 40, 28, 218+pallette(1)
+			pallette &h00EE, 0, 1
+			exit case
+		case 1
+			pallettes bg_i_02_pal, 1, 0, 16
+			'loadtiles bg_i_02, 890, 218
+			DrawTiles16 lblptr&(bg_i_02_map),  0, 0, 40, 28, 218+pallette(1)
+			pallette &h004E, 0, 1
+			exit case
+		case 2
+			pallettes bg_i_03_pal, 1, 0, 16
+			'loadtiles bg_i_03, 964, 218
+			DrawTiles16 lblptr&(bg_i_03_map),  0, 0, 40, 28, 218+pallette(1)
+			pallette &h0E0E, 0, 1
+			exit case
+		case 3
+			pallettes bg_i_04_pal, 1, 0, 16
+			'loadtiles bg_i_04, 802, 218
+			DrawTiles16 lblptr&(bg_i_04_map),  0, 0, 40, 28, 218+pallette(1)
+			pallette &h00EA, 0, 1
+			exit case
+		case 4
+			pallettes bg_i_05_pal, 1, 0, 16
+			'loadtiles bg_i_05, 1096, 218
+			DrawTiles16 lblptr&(bg_i_05_map),  0, 0, 40, 28, 218+pallette(1)
+			pallette &h0E80, 0, 1
+			exit case
+		case else
+			pallettes bg_i_06_pal, 1, 0, 16
+			'loadtiles bg_i_06, 1060, 218
+			DrawTiles16 lblptr&(bg_i_06_map),  0, 0, 40, 28, 218+pallette(1)
+			pallette &h0EE0, 0, 1
+			exit case
+	end select
+	enable screen
+	sleep 10
+	
+	setgfxplane scroll_a
+	'Dibujar nuestro bello logo en SCROLL_A junto al bla-bla bla
+	ink 2
+	drawtilesinc 128,11,3,18,5
+	
+	'Mostrar las instrucciones
+	locate 8,11
+	ink 0
+	print "** CONTROLES **"
+	locate 12,3
+	print "<- Mover bus a la izquierda"
+	locate 13,3
+	print "-> Mover bus a la derecha"
+	locate 14,3
+	print chr$(1) + "  Tocar corneta"
+	locate 15,3
+	print chr$(3) + "  Volver a la pantalla inicial"
+	locate 24,19
+	print "Preparate..."
+	
+	'Preparar la cuenta regresiva
+	psgvol 1,15
+	pallette &h000E, 3, 1
+	ink 3
+	
+	'3...
+	locate 20,32: print "333 "
+	locate 21,32: print "   3"
+	locate 22,32: print " 33 "
+	locate 23,32: print "   3"
+	locate 24,32: print "333 "
+	psg 1,750
+	sleep 10
+	psg 1,-1
+	sleep 50
+	
+	'...2
+	locate 20,32: print " 22 "
+	locate 21,32: print "2  2"
+	locate 22,32: print "  2 "
+	locate 23,32: print " 2  "
+	locate 24,32: print "2222"
+	psg 1,750
+	sleep 10
+	psg 1,-1
+	sleep 50
+	
+	'1...
+	locate 20,32: print "  1 "
+	locate 21,32: print " 11 "
+	locate 22,32: print "  1 "
+	locate 23,32: print "  1 "
+	locate 24,32: print "1111"
+	psg 1,750
+	sleep 10
+	psg 1,-1
+	sleep 50
+	
+	'GO!
+	locate 20,32: print " 00 "
+	locate 21,32: print "0  0"
+	locate 22,32: print "0  0"
+	locate 23,32: print "0  0"
+	locate 24,32: print " 00 "
+	psg 1,971
+	sleep 10
+	psg 1,-1
+	sleep 10
+end sub
+
+
+'*******************************************************
+'CRAZYBUS(TM) TURBO ENGINE v2.xxx
+'patente pendiente en 70 paises y el Distrito Capital :P
+'*******************************************************
+
+'Preparar el fondo y el resto del campo de juego
+declare sub setupStage()
+	disable screen
+	cls
+	settextplane scroll_b
+	cls
+	settextplane scroll_a
+	setgfxplane scroll_b
+	
+	loadfont
+	loadtiles botones, 4, 1
+	
+	'MAPA DE PALETAS:
+	'===============
+	'0 = fuente + cauchos
+	'1 = fondo
+	'2 = autobus
+	'3 = logo CB
+	
+	loadtiles cblogo,90,128
+	pallettes cblogo_pal, 3, 0, 16
+	
+	'Cargar los bloques para la via
+	loadtiles rc1, 1, 219
+	loadtiles rc2, 1, 220
+	loadtiles rc3, 1, 221
+	
+	'Cargar los cauchos...
+	pallettes pal_16w32, 0, 0, 16
+	loadtiles cauchos, 8, 256
+	
+	'Precalcular los colores aleatorios para los buses
+	x = rnd(7)
+	y = rnd(7)
+	z = rnd(7)
+	
+	'Cargar el autobus seleccionado
+	select case busID
+		case 0
+			pallettes bus1_pal, 2, 0, 16
+			loadtiles bus1_mdl, 108, 264
+			pallette rgb(x, y, z), 2, 7
+			exit case
+		case 1
+			pallettes bus2_pal, 2, 0, 16
+			loadtiles bus2_mdl, 108, 264
+			pallette rgb(x, y, z), 2, 1
+			exit case
+		case 2
+			pallettes bus3_pal, 2, 0, 16
+			loadtiles bus3_mdl, 108, 264
+			pallette rgb(x, y, z), 2, 2
+			exit case
+		case 3
+			pallettes bus4_pal, 2, 0, 16
+			loadtiles bus4_mdl, 108, 264
+			exit case
+		case 4
+			pallettes bus5_pal, 2, 0, 16
+			loadtiles bus5_mdl, 108, 264
+			pallette rgb(x, y, z), 2, 2
+			exit case
+	end select
+	
+	'Primero... los neumaticos (porque sin ellos, de que sirve el bus?)
+	caucho(0) = addsprite(2, 2)
+	caucho(1) = addsprite(2, 2)
+	propsprite caucho(0), 256, 0
+	propsprite caucho(1), 256, 0
+	
+	'Luego viene el bus...
+	y = 0
+	for z = 0 to 26
+		buz(z) = addsprite(2, 2)
+		propsprite buz(z), 264+y, 2
+		y = y + 4
+	next z
+	
+	'Tenemos 6 fondos, asi que elegimos uno al azar:
+	z = rnd(6)
+	select case z
+		'Paso 1: cargar imagen de fondo
+		'Paso 2: dibujar fondo
+		'Paso 3: Fijar el primer color de la primera paleta para que el
+		'        texto sea legible sobre la imagen de fondo
+		'Paso 4: Aca tampoco hay paso 4!
+		case 0
+			pallettes bg_f_01_pal, 1, 0, 16
+			'loadtiles bg_f_01, 584, 372
+			DrawTiles16 lblptr&(bg_f_01_map),  0, 0, 40, 28, 372+pallette(1)
+			pallette &h000E, 0, 1
+			exit case
+		case 1
+			pallettes bg_f_02_pal, 1, 0, 16
+			'loadtiles bg_f_02, 853, 372
+			DrawTiles16 lblptr&(bg_f_02_map),  0, 0, 40, 28, 372+pallette(1)
+			pallette &h0E0E, 0, 1
+			exit case
+		case 2
+			pallettes bg_f_03_pal, 1, 0, 16
+			'loadtiles bg_f_03, 850, 372
+			DrawTiles16 lblptr&(bg_f_03_map),  0, 0, 40, 28, 372+pallette(1)
+			pallette &h00E0, 0, 1
+			exit case
+		case 3
+			pallettes bg_f_04_pal, 1, 0, 16
+			'loadtiles bg_f_04, 732, 372
+			DrawTiles16 lblptr&(bg_f_04_map),  0, 0, 40, 28, 372+pallette(1)
+			pallette &h0C06, 0, 1
+			exit case
+		case 4
+			pallettes bg_f_05_pal, 1, 0, 16
+			'loadtiles bg_f_05, 585, 372
+			DrawTiles16 lblptr&(bg_f_05_map),  0, 0, 40, 28, 372+pallette(1)
+			pallette &h0E00, 0, 1
+			exit case
+		case else
+			pallettes bg_f_06_pal, 1, 0, 16
+			'loadtiles bg_f_06, 529, 372
+			DrawTiles16 lblptr&(bg_f_06_map),  0, 0, 40, 28, 372+pallette(1)
+			pallette &h00CE, 0, 1
+			exit case
+	end select
+	
+	'Poner el logo de CB...
+	setgfxplane scroll_a
+	ink 3
+	drawtilesinc 128,21,1,18,5
+	ink 0
+	locate 5, 21: print "ver. " + version$
+	locate 6, 26: print "(" + codename$ + ")"
+	
+	'InfoTags(tm)
+	ink 0
+	locate 0, 0
+	print chr$(3) + " = Regresar!"
+	locate 2,0: print "Tu autobus:"
+	select case busID
+		case 0
+			print " [Irizar]"
+			print "   Century 3.95"
+			exit case
+		case 1
+			print " [Busscar]"
+			print "   Jum Buss 360"
+			exit case
+		case 2
+			print " [ENCAVA]"
+			print "   E-NT6000"
+			exit case
+		case 3
+			print " [Generico]"
+			print "   Autobus escolar"
+			exit case
+		case 4
+			print " [Marcopolo]"
+			print "   Paradiso GV1150"
+			exit case
+	end select
+	
+	locate 6, 0: print "Recorrido: 0"
+	
+	'Dibujar los postes
+	ink 1
+	drawtile 219, 2, 15
+	drawtile 219, 37, 15
+	drawtile 219, 1, 16
+	drawtile 219, 3, 16
+	drawtile 219, 36, 16
+	drawtile 219, 38, 16
+	for y = 17 to 24
+		drawtile 219, 2, y
+		drawtile 219, 37, y
+	next x
+	'ahora, el poste "torcido"
+	drawtile 219, 22, 15
+	drawtile 219, 21, 16
+	drawtile 219, 23, 16
+	drawtile 219, 22, 17
+	drawtile 219, 21, 18
+	drawtile 219, 21, 19
+	drawtile 219, 21, 20
+	drawtile 219, 22, 21
+	drawtile 219, 23, 22
+	drawtile 219, 23, 23
+	drawtile 219, 24, 24
+	
+	'Dibujar el piso
+	ink 0
+	for x = 0 to 39
+		drawtile 220, x, 25
+		drawtile 220, x, 26
+		drawtile 220, x, 27
+	next x
+	
+	'Ahora, las coordenadas...
+	'Medimos X desde la parte trasera del bus
+	x = 0
+	'Colocar el bus apenas por encima del camino
+	y = 248
+	
+	enable screen
+end sub
+
+'Game goes here, nyo...
+declare sub gameOn()
+	'Preparar la "arena"...
+	setupStage
+	
+	'Poner en marcha el motor
+	gc = 0
+	on vblank gosub motor_stub
+	enable interrupt vblank
+	
+	'Que queremos hacer?
+	while dr = 0
+		dr = joypad(0)
+		
+		if dr.2 then		'retroceso
+			x--
+			gc = 1
+			moveBus
+		elseif dr.3 then	'avanzar
+			x++
+			gc = 2
+			moveBus
+		else
+			gc = 3
+		endif
+		
+		if dr.6 then	'tocar bocina
+			horn 1
+		else
+			horn 0
+		endif
+		
+		if dr.5 then	'salir
+			'Liberar los sprites!
+			freeallsprites
+			'Apagar el bus...
+			disable interrupt vblank
+			psgvol 0,0: psgvol 1,0: psgvol 2,0: psgvol 3,0
+			psg 0, 0
+			psg 1, 0
+			psg 2, 0
+			'De vuelta al menu!
+			exit sub
+		endif
+		dr = 0
+		sleep 2
+	wend
+end sub
+
+'Mover autobus
+declare sub moveBus()
+	'Rodar los cauchos
+	if x % 2 = 1 then
+		propsprite caucho(0), 256, 0
+		propsprite caucho(1), 256, 0
+	else
+		propsprite caucho(0), 260, 0
+		propsprite caucho(1), 260, 0
+	endif
+	select case busID
+		case 0
+			'IC395
+			movesprite caucho(0), x+17, y+65
+			movesprite caucho(1), x+87, y+65
+			exit case
+		case 1
+			'JB360
+			movesprite caucho(0), x+15, y+65
+			movesprite caucho(1), x+88, y+65
+			exit case
+		case 2
+			'ENT6000
+			movesprite caucho(0), x+18, y+65
+			movesprite caucho(1), x+88, y+65
+			exit case
+		case 3
+			'GEN_ESC
+			movesprite caucho(0), x+12, y+65
+			movesprite caucho(1), x+98, y+65
+			exit case
+		case 4
+			'PGV1150
+			movesprite caucho(0), x+10, y+65
+			movesprite caucho(1), x+90, y+65
+			exit case
+	end select
+	
+	'Mover el autobus entero!
+	for z = 0 to 8
+		movesprite buz(z), x + ((z*16)-16), y+33
+		movesprite buz(z+9), x + ((z*16)-16), y+49
+		movesprite buz(z+18), x + ((z*16)-16), y+65
+	next z
+	
+	'Mostrar la posicion actual del bus
+	ink 0
+	locate 6, 11: print "     "
+	locate 6, 11: print x
+end sub
+
+
+'******************************
+'Musica! [YouTube's Choice(TM)]
+'******************************
+
+'manejador de evento
+aniSplash_stub:
+	aniSplash
+	return
+	
+'Musica + animacion de la pantalla principal
+declare sub aniSplash()
+	dim ia as integer
+	dim bo1 as integer
+	dim bo2 as integer
+	dim bo3 as integer
+	
+	if drop<>0 then
+		drop--
+	else
+		'SEKRET SAUCE(TM) - DO NOT PIRATE!
+		drop=9
+		ia=rnd(40)*10: psg 0,ia+500
+		ia=rnd(40)*10: psg 1,ia+600
+		ia=rnd(40)*10: psg 2,ia+700
+		bo1=rnd(2)+6
+		bo2=rnd(2)+6
+		bo3=rnd(2)+6
+		pallette rgb(bo1,bo2,bo3),2,7
+	endif
+	
+	gc++
+	'Rotar los fondos de pantalla cada 30 segundos
+	if gc > 1800 then
+		gc = 0
+		drawSplash
+	endif
+	
+	'Destellar el texto "Presiona START!"
+	'Velocidad aproximada: 2 ciclos por segundo
+	if gc % 20 <= 10 then
+		locate 16,18: print "Presiona " + chr$(4) + "!"
+	else
+		locate 16,18: print "           "
+	endif
+end sub
+
+'manejador de evento
+aniSelector_stub:
+	aniSelector
+	return
+
+'Musica + animacion del selector de buses
+declare sub aniSelector()
+	dim ia as integer
+	
+	'print "VINT: "; gc
+	if drop<>0 then
+		drop--
+	else
+		'SEKRET SAUCE(TM) - DO NOT PIRATE!
+		drop=9
+		ia=rnd(40)*10: psg 0,ia+200
+     	ia=rnd(40)*10: psg 1,ia+250
+     	ia=rnd(40)*10: psg 2,ia+325
+	endif
+	
+	gc++
+	if gc > 10 then
+		gc = 0
+	elseif gc = 10 then
+		'Colorcitos aleatorios para el texto de seleccion
+		ia=rnd(3)
+		ink ia
+		locate 8,2: print "==>Selecciona un bus!<=="
+		locate 19,27: print "Cambiar bus"
+	    locate 22,27: print "Seleccionar"	
+	endif
+end sub
+
+'Bocina
+declare sub horn(doit as integer)
+	if doit > 0 then
+		'Este par de notas simula mas o menos la bocina
+		'electrica de los autobuses modernos (no las de aire)
+		'Suena muy parecido a la de cualquier Marcopolo/Busscar DD
+		psgvol 1, 15
+		psgvol 2, 15
+		psg 1, 630
+		psg 2, 980
+	else
+		'Por que no te callas!?
+		psgvol 1, 0
+		psgvol 2, 0
+	endif
+end sub
+
+'manejador de evento
+motor_stub:
+	motor
+	return
+
+'Ruido del motor
+declare sub motor()
+	'Estados del motor
+	'(valores de gc):
+	'==================
+	'1 = retroceso
+	'2 = marcha directa
+	'3 = estacionado
+	'Cualquier otro = apagado
+	
+	if gc = 1 [or] gc = 2 then
+		'POWER!
+		psgvol 0, 13
+		psgvol 3, 12
+	elseif gc = 3 then
+		'Bajarle un poco a la bulla cuando estemos detenidos
+		psgvol 0, 9
+		psgvol 3, 8
+	else
+		'Apagamos el carro...
+		psgvol 3, 0
+		psgvol 0, 0
+	endif
+	
+	'Activar el ruido del motor
+	psg 3, 7	'Tone Generator #3
+	drop++
+	if drop % 3 = 0 then
+		psg 0, 75
+	elseif drop % 3 = 1 then
+		psg 0, 50
+	elseif drop % 3 = 2 then
+		psg 0, 25
+	endif
+	
+	if drop > 39 then
+		drop = 0
+	endif
+	
+	'Si estamos echando retro, sonamos la alarma
+	if gc = 1 then
+		if drop < 20 then
+			psgvol 1, 13
+			psg 1, 891
+		else
+			psgvol 1, 0
+		endif
+	endif
+end sub
+
+'No hay mas codigo, nyo!

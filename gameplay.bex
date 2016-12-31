@@ -1,0 +1,1089 @@
+'gameplay
+	global x as integer
+	global y as integer
+	global z as integer
+	option	SEGACD PROGRAM
+	'Sprites:
+	global buz(27) as integer		'autobus (9x3)
+	global caucho(2) as integer		'cauchos
+	global busID as integer at &hFFFF3039 'this should make it the same as the selection
+	'Variables para la musica y animaciones
+	global drop as integer
+	global gc as integer
+	'Aca leemos el pad
+	global dr as integer
+	RANDOMIZE
+	gameOn
+	cls
+	print	"loading crazy bus"
+	'after this take the game back to the title screen
+	loadscd 2
+	end
+	
+botones:
+	DATALONG	$00066000	'  A
+	DATALONG	$00666600
+	DATALONG	$06888860
+	DATALONG	$66866866
+	DATALONG	$66888866
+	DATALONG	$06866867
+	DATALONG	$00666670
+	DATALONG	$00066700
+
+	DATALONG	$000DD000	'  B
+	DATALONG	$00DDDD00
+	DATALONG	$0DD8DDD0
+	DATALONG	$DDD800DD
+	DATALONG	$DDD8D0DD
+	DATALONG	$0DD800D7
+	DATALONG	$00DDDD70
+	DATALONG	$000DD700
+	
+	DATALONG	$00099000	'  C
+	DATALONG	$00999900
+	DATALONG	$09988990
+	DATALONG	$99899999
+	DATALONG	$99899999
+	DATALONG	$09988997
+	DATALONG	$00999970
+	DATALONG	$00099700
+	
+	DATALONG	$00033000	'  START
+	DATALONG	$00333300
+	DATALONG	$03388330
+	DATALONG	$33833333
+	DATALONG	$33388333
+	DATALONG	$03333837
+	DATALONG	$00388370
+	DATALONG	$00033700
+
+'logo CB (18*5=90)
+cblogo_pal:
+	datafile	CB_logo.png.pal,bin
+cblogo:
+	datafile	CB_logo.png.pat,bin
+cblogo_map:
+	datafile	CB_logo.png.nam,bin
+
+'rejilla del fondo ("carretera")
+rc1:
+	DATALONG	$70707070	'  Tile: 0
+	DATALONG	$07070707
+	DATALONG	$70707070
+	DATALONG	$07070707
+	DATALONG	$70707070
+	DATALONG	$07070707
+	DATALONG	$70707070
+	DATALONG	$07070707
+rc2:
+	DATALONG	$11001100	'  Tile: 0
+	DATALONG	$00110011
+	DATALONG	$11001100
+	DATALONG	$00110011
+	DATALONG	$11001100
+	DATALONG	$00110011
+	DATALONG	$11001100
+	DATALONG	$00110011
+rc3:
+	DATALONG	$11111111	'  Tile: 0
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+	DATALONG	$11111111
+
+'Paleta extra...
+pal_16w32:
+	DATAINT	$0EEE,$00EE,$0E0E,$000E,$0EE0,$00E0,$0E00,$0888
+	DATAINT	$0CCC,$0088,$0808,$0008,$0880,$0080,$0800,$0000
+
+'modelos de autobuses ("rebanados" para sprites, 18x6=108)
+bus1_mdl: datafile cen_16k.tlf ,BIN		'Century
+bus2_mdl: datafile vbuss.tlf ,BIN		'Jum Buss
+bus3_mdl: datafile ENT6K_sl.tlf ,BIN	'ENT-6000
+bus4_mdl: datafile esc_slc.tlf ,BIN		'adivina...
+bus5_mdl: datafile GV1150sl.tlf ,BIN	'GV1150
+
+'Paletas de los autobuses
+bus1_pal:
+	DATAINT	$00E0,$0444,$0AAA,$0888,$0222,$0000,$0666,$0EEE
+	DATAINT	$0CCC,$0EE0,$000E,$00EE,$0000,$0000,$0000,$0000
+
+bus2_pal:
+	DATAINT	$0000,$0EEE,$0E00,$0EE8,$0800,$0666,$0EC2,$000E
+	DATAINT	$0888,$00EE,$0600,$0CCC,$000E,$0EEE,$00EE,$0000
+
+bus3_pal:
+	DATAINT	$00E0,$0444,$0EEE,$0046,$00EE,$0000,$0000,$0000
+	DATAINT	$0000,$0000,$0000,$0000,$0000,$0000,$0000,$0000
+
+bus4_pal:
+	DATAINT	$0EEE,$04AE,$0CCC,$0EE0,$000E,$006E,$0000,$0E88
+	DATAINT	$0444,$00EE,$0666,$0000,$0000,$0000,$0000,$0000
+
+bus5_pal:
+	DATAINT	$00E0,$0444,$0EEE,$0222,$0422,$0CCC,$0AAA,$0224
+	DATAINT	$000E,$0462,$0480,$0260,$00EE,$0000,$0000,$0000
+
+'neumaticos (cauchos)
+cauchos:
+	'giro 1/2
+	DATALONG	$00000FFF	'  Tile: 0
+	DATALONG	$000FFFFF
+	DATALONG	$000FFFF8
+	DATALONG	$0FFFFFFF
+	DATALONG	$0FFFFFF8
+	DATALONG	$FFFFF888
+	DATALONG	$FF8FF877
+	DATALONG	$FF8F888F
+	DATALONG	$FF8F887F	'  Tile: 1
+	DATALONG	$FFFFF878
+	DATALONG	$FFFFF888
+	DATALONG	$0FFFFFF8
+	DATALONG	$0FFFFFFF
+	DATALONG	$000FFF88
+	DATALONG	$000FFFFF
+	DATALONG	$00000FFF
+	DATALONG	$FFF00000	'  Tile: 2
+	DATALONG	$FFFFF000
+	DATALONG	$88FFF000
+	DATALONG	$FFFFFFF0
+	DATALONG	$8FFFFFF0
+	DATALONG	$888FFFFF
+	DATALONG	$878FFFFF
+	DATALONG	$F788F8FF
+	DATALONG	$F888F8FF	'  Tile: 3
+	DATALONG	$778FF8FF
+	DATALONG	$888FFFFF
+	DATALONG	$8FFFFFF0
+	DATALONG	$FFFFFFF0
+	DATALONG	$8FFFF000
+	DATALONG	$FFFFF000
+	DATALONG	$FFF00000
+	'giro 2/2
+	DATALONG	$00000FFF	'  Tile: 0
+	DATALONG	$000FFFFF
+	DATALONG	$000FFFFF
+	DATALONG	$0FFF8FFF
+	DATALONG	$0FF8FFF8
+	DATALONG	$FFFFF888
+	DATALONG	$FFFFF887
+	DATALONG	$FFFF888F
+	DATALONG	$FFFF887F	'  Tile: 1
+	DATALONG	$FFFFF888
+	DATALONG	$FFFFF888
+	DATALONG	$0FF8FFF8
+	DATALONG	$0FFF8FFF
+	DATALONG	$000FFFFF
+	DATALONG	$000FFFFF
+	DATALONG	$00000FFF
+	DATALONG	$FFF00000	'  Tile: 2
+	DATALONG	$FFFFF000
+	DATALONG	$FFFFF000
+	DATALONG	$FFF8FFF0
+	DATALONG	$8FFF8FF0
+	DATALONG	$888FFFFF
+	DATALONG	$888FFFFF
+	DATALONG	$F788FFFF
+	DATALONG	$F888FFFF	'  Tile: 3
+	DATALONG	$788FFFFF
+	DATALONG	$888FFFFF
+	DATALONG	$8FFF8FF0
+	DATALONG	$FFF8FFF0
+	DATALONG	$FFFFF000
+	DATALONG	$FFFFF000
+	DATALONG	$FFF00000
+
+
+'***********************
+'Fondos - Campo de juego
+'***********************
+
+bg_f_01_pal:
+	datafile	bg_f_01p.bin,bin
+bg_f_01:
+	datafile	bg_f_01t.bin,bin
+bg_f_02_pal:
+	datafile	bg_f_02p.bin,bin
+bg_f_02:
+	datafile	bg_f_02t.bin,bin
+bg_f_03_pal:
+	datafile	bg_f_03.png.pal,bin
+bg_f_03:
+	datafile	bg_f_03.png.pat,bin
+bg_f_04_pal:
+	datafile	bg_f_04p.bin,bin
+bg_f_04:
+	datafile	bg_f_04t.bin,bin
+bg_f_05_pal:
+	datafile	bg_f_05.png.pal,bin
+bg_f_05:
+	datafile	bg_f_05.png.pat,bin
+bg_f_06_pal:
+	datafile	bg_f_06.png.pal,bin
+bg_f_06:
+	datafile	bg_f_06.png.pat,bin
+
+	global radio_track as integer
+radio:
+'added by sega16
+'this will let you select an audio track from the cd
+	setgfxplane scroll_a
+	settextplane scroll_a
+	cls
+	locate 0,0
+	print	"This is the radio select a track"
+	print	"use the left and right buttons to select a track"
+	print	"press start to play the track and exit"
+	print	"the first track is zero"
+	joy = 1
+	gosub	redraw_radio
+	while 1
+		joy = joypad(0)
+		
+		if joy.2 then
+		waitpadup
+			radio_track--
+			gosub	redraw_radio
+		elseif joy.3 then
+		waitpadup
+			radio_track++
+			gosub	redraw_radio
+		endif
+		if joy.7 then
+		waitpadup
+		'gosub	redraw_radio
+		cls
+		cdplay radio_track+2
+		joy=0
+		Exit While
+		endif
+		'waitpadup
+		sleep 1
+	wend
+	return
+
+redraw_radio:
+	locate 6,0
+    Print Str$(radio_track) + "      "
+	print	Hex$(radio_track)
+'redraw the radio
+	return
+
+
+
+'*******************************************************
+'CRAZYBUS(TM) TURBO ENGINE v2.xxx
+'patente pendiente en 70 paises y el Distrito Capital :P
+'*******************************************************
+declare sub setup_scroll_a()
+	'Poner el logo de CB...
+	setgfxplane scroll_a
+	ink 3
+	'drawtilesinc 1399,21,1,18,5
+	DrawTiles16 lblptr&(cblogo_map),  21, 1, 18, 5, 128+pallette(3)
+	ink 0
+	locate 5, 21: print "ver. " + version$
+	locate 6, 26: print "(" + codename$ + ")"
+	
+	'InfoTags(tm)
+	ink 0
+	locate 0, 0
+	print chr$(3) + " = Regresar!"
+	locate 2,0: print "Tu autobus:"
+	select case busID
+		case 0
+			print " [Irizar]"
+			print "   Century 3.95"
+			exit case
+		case 1
+			print " [Busscar]"
+			print "   Jum Buss 360"
+			exit case
+		case 2
+			print " [ENCAVA]"
+			print "   E-NT6000"
+			exit case
+		case 3
+			print " [Generico]"
+			print "   Autobus escolar"
+			exit case
+		case 4
+			print " [Marcopolo]"
+			print "   Paradiso GV1150"
+			exit case
+	end select
+	
+	locate 6, 0: print "Recorrido (distance):"
+	
+	'Dibujar los postes
+	ink 1
+	drawtile 1396, 2, 15
+	drawtile 1396, 37, 15
+	drawtile 1396, 1, 16
+	drawtile 1396, 3, 16
+	drawtile 1396, 36, 16
+	drawtile 1396, 38, 16
+	'I need to change around some varibles
+	'y=a
+	'x=b
+	for a = 17 to 24
+		drawtile 1396, 2, a
+		drawtile 1396, 37, a
+	next a
+	'ahora, el poste "torcido"
+	drawtile 1396, 22, 15
+	drawtile 1396, 21, 16
+	drawtile 1396, 23, 16
+	drawtile 1396, 22, 17
+	drawtile 1396, 21, 18
+	drawtile 1396, 21, 19
+	drawtile 1396, 21, 20
+	drawtile 1396, 22, 21
+	drawtile 1396, 23, 22
+	drawtile 1396, 23, 23
+	drawtile 1396, 24, 24
+	
+	'Dibujar el piso
+	ink 0
+	for b = 0 to 39
+		drawtile 1397, b, 25
+		drawtile 1397, b, 26
+		drawtile 1397, b, 27
+	next b
+	
+end sub
+
+	asm
+bg_f_01_map:
+	incbin	bg_f_01.png.eni
+	even
+bg_f_02_map:
+	incbin	bg_f_02m.eni
+	even
+bg_f_03_map:
+	incbin	bg_f_03.png.eni
+	even
+bg_f_04_map:
+	incbin	bg_f_04m.eni
+	even
+bg_f_06_map:
+	incbin	bg_f_06.png.eni
+	even
+	end asm
+
+'Preparar el fondo y el resto del campo de juego
+declare sub setupStage()
+	disable screen
+	cls
+	settextplane scroll_b
+	cls
+	settextplane scroll_a
+	setgfxplane scroll_b
+	
+	loadfont
+	loadtiles botones, 4, 1
+	
+	'MAPA DE PALETAS:
+	'===============
+	'0 = fuente + cauchos
+	'1 = fondo
+	'2 = autobus
+	'3 = logo CB
+	
+	loadtiles cblogo,76,128
+	pallettes cblogo_pal, 3, 0, 16
+	
+	'Cargar los bloques para la via
+	loadtiles rc1, 1, 1396
+	loadtiles rc2, 1, 1397
+	loadtiles rc3, 1, 1398'Unused???
+	
+	'Cargar los cauchos...
+	pallettes pal_16w32, 0, 0, 16
+	loadtiles cauchos, 8, 1507
+	
+	'Precalcular los colores aleatorios para los buses
+	x = rnd(7)
+	y = rnd(7)
+	z = rnd(7)
+	
+	'Cargar el autobus seleccionado
+	select case busID
+		case 0
+			pallettes bus1_pal, 2, 0, 16
+			loadtiles bus1_mdl, 108, 1399
+			pallette rgb(x, y, z), 2, 7
+			exit case
+		case 1
+			pallettes bus2_pal, 2, 0, 16
+			loadtiles bus2_mdl, 108, 1399
+			pallette rgb(x, y, z), 2, 1
+			exit case
+		case 2
+			pallettes bus3_pal, 2, 0, 16
+			loadtiles bus3_mdl, 108, 1399
+			pallette rgb(x, y, z), 2, 2
+			exit case
+		case 3
+			pallettes bus4_pal, 2, 0, 16
+			loadtiles bus4_mdl, 108, 1399
+			exit case
+		case 4
+			pallettes bus5_pal, 2, 0, 16
+			loadtiles bus5_mdl, 108, 1399
+			pallette rgb(x, y, z), 2, 2
+			exit case
+	end select
+	
+	'Primero... los neumaticos (porque sin ellos, de que sirve el bus?)
+	caucho(0) = addsprite(2, 2)
+	caucho(1) = addsprite(2, 2)
+	propsprite caucho(0), 1520, 0
+	propsprite caucho(1), 1520, 0
+	
+	'Luego viene el bus...
+	y = 0
+	for z = 0 to 26
+		buz(z) = addsprite(2, 2)
+		propsprite buz(z), 1399+y, 2
+		y = y + 4
+	next z
+	
+	'Tenemos 6 fondos, asi que elegimos uno al azar:
+	z =  rnd(6)
+	select case z
+		'Paso 1: cargar imagen de fondo
+		'Paso 2: dibujar fondo
+		'Paso 3: Fijar el primer color de la primera paleta para que el
+		'        texto sea legible sobre la imagen de fondo
+		'Paso 4: Aca tampoco hay paso 4!
+		ink 1
+		case 0
+			pallettes bg_f_01_pal, 1, 0, 16
+			loadtiles bg_f_01, 1120, 204
+			ink 1
+			'DrawTiles16 lblptr&(bg_f_01_map),  0, 0, 40, 28, 372+pallette(1)
+			drawtilesinc 204,0,0,40,28
+			pallette &h000E, 0, 1
+			exit case
+		case 1
+			pallettes bg_f_02_pal, 1, 0, 16
+			loadtiles bg_f_02, 1109, 204
+			'DrawTiles16 lblptr&(bg_f_02_map),  0, 0, 40, 28, 372+pallette(1)
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_f_02_map).l,a0
+			move.w	#$20CC,d0
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			pallette &h0E0E, 0, 1
+			exit case
+		case 2
+			pallettes bg_f_03_pal, 1, 0, 16
+			loadtiles bg_f_03, 1095, 204
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_f_03_map).l,a0
+			move.w	#$20CC,d0
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			'DrawTiles16 lblptr&(bg_f_03_map),  0, 0, 40, 28, 372+pallette(1)
+			pallette &h00E0, 0, 1
+			exit case
+		case 3
+			pallettes bg_f_04_pal, 1, 0, 16
+			loadtiles bg_f_04, 1047, 204
+			'DrawTiles16 lblptr&(bg_f_04_map),  0, 0, 40, 28, 372+pallette(1)
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_f_04_map).l,a0
+			move.w	#$20CC,d0
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			pallette &h0C06, 0, 1
+			exit case
+		case 4
+			pallettes bg_f_05_pal, 1, 0, 16
+			loadtiles bg_f_05, 1120, 204
+			'DrawTiles16 lblptr&(bg_f_05_map),  0, 0, 40, 28, 372+pallette(1)
+			ink 1
+			DrawTilesInc 204, 0,0, 40, 28
+			pallette &h0E00, 0, 1
+			exit case
+		case else
+			pallettes bg_f_06_pal, 1, 0, 16
+			loadtiles bg_f_06, 1020, 204
+			asm
+			lea	($FFF6000).l,A1
+			lea	(bg_f_06_map).l,a0
+			move.w	#$20CC,d0
+			bsr.w	EniDec
+			lea	($FFF6000).l,A1
+			move.l	#$60000003,d0
+			moveq	#$27,d1
+			moveq	#$1B,d2
+			bsr.w	ShowVDPGraphics
+			end asm
+			'DrawTiles16 lblptr&(bg_f_06_map),  0, 0, 40, 28, 372+pallette(1)
+			pallette &h00CE, 0, 1
+			exit case
+	end select
+	
+	setup_scroll_a
+	
+	'Ahora, las coordenadas...
+	'Medimos X desde la parte trasera del bus
+	x = 0
+	'Colocar el bus apenas por encima del camino
+	y = 248
+	
+	enable screen
+end sub
+
+	asm
+; ---------------------------------------------------------------------------
+; Enigma decompression algorithm
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+EniDec:
+		movem.l	d0-d7/a1-a5,-(sp)
+		movea.w	d0,a3
+		move.b	(a0)+,d0
+		ext.w	d0
+		movea.w	d0,a5
+		move.b	(a0)+,d4
+		lsl.b	#3,d4
+		movea.w	(a0)+,a2
+		adda.w	a3,a2
+		movea.w	(a0)+,a4
+		adda.w	a3,a4
+		move.b	(a0)+,d5
+		asl.w	#8,d5
+		move.b	(a0)+,d5
+		moveq	#$10,d6
+
+loc_173E:				; XREF: loc_1768
+		moveq	#7,d0
+		move.w	d6,d7
+		sub.w	d0,d7
+		move.w	d5,d1
+		lsr.w	d7,d1
+		andi.w	#$7F,d1
+		move.w	d1,d2
+		cmpi.w	#$40,d1
+		bcc.s	loc_1758
+		moveq	#6,d0
+		lsr.w	#1,d2
+
+loc_1758:
+		bsr.w	sub_188C
+		andi.w	#$F,d2
+		lsr.w	#4,d1
+		add.w	d1,d1
+		jmp	loc_17B4(pc,d1.w)
+; End of function EniDec
+
+; ---------------------------------------------------------------------------
+
+loc_1768:				; XREF: loc_17B4
+		move.w	a2,(a1)+
+		addq.w	#1,a2
+		dbf	d2,loc_1768
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_1772:				; XREF: loc_17B4
+		move.w	a4,(a1)+
+		dbf	d2,loc_1772
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_177A:				; XREF: loc_17B4
+		bsr.w	loc_17DC
+
+loc_177E:
+		move.w	d1,(a1)+
+		dbf	d2,loc_177E
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_1786:				; XREF: loc_17B4
+		bsr.w	loc_17DC
+
+loc_178A:
+		move.w	d1,(a1)+
+		addq.w	#1,d1
+		dbf	d2,loc_178A
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_1794:				; XREF: loc_17B4
+		bsr.w	loc_17DC
+
+loc_1798:
+		move.w	d1,(a1)+
+		subq.w	#1,d1
+		dbf	d2,loc_1798
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_17A2:				; XREF: loc_17B4
+		cmpi.w	#$F,d2
+		beq.s	loc_17C4
+
+loc_17A8:
+		bsr.w	loc_17DC
+		move.w	d1,(a1)+
+		dbf	d2,loc_17A8
+		bra.s	loc_173E
+; ---------------------------------------------------------------------------
+
+loc_17B4:				; XREF: EniDec
+		bra.s	loc_1768
+; ---------------------------------------------------------------------------
+		bra.s	loc_1768
+; ---------------------------------------------------------------------------
+		bra.s	loc_1772
+; ---------------------------------------------------------------------------
+		bra.s	loc_1772
+; ---------------------------------------------------------------------------
+		bra.s	loc_177A
+; ---------------------------------------------------------------------------
+		bra.s	loc_1786
+; ---------------------------------------------------------------------------
+		bra.s	loc_1794
+; ---------------------------------------------------------------------------
+		bra.s	loc_17A2
+; ---------------------------------------------------------------------------
+
+loc_17C4:				; XREF: loc_17A2
+		subq.w	#1,a0
+		cmpi.w	#$10,d6
+		bne.s	loc_17CE
+		subq.w	#1,a0
+
+loc_17CE:
+		move.w	a0,d0
+		lsr.w	#1,d0
+		bcc.s	loc_17D6
+		addq.w	#1,a0
+
+loc_17D6:
+		movem.l	(sp)+,d0-d7/a1-a5
+		rts	
+; ---------------------------------------------------------------------------
+
+loc_17DC:				; XREF: loc_17A2
+		move.w	a3,d3
+		move.b	d4,d1
+		add.b	d1,d1
+		bcc.s	loc_17EE
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_17EE
+		ori.w	#-$8000,d3
+
+loc_17EE:
+		add.b	d1,d1
+		bcc.s	loc_17FC
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_17FC
+		addi.w	#$4000,d3
+
+loc_17FC:
+		add.b	d1,d1
+		bcc.s	loc_180A
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_180A
+		addi.w	#$2000,d3
+
+loc_180A:
+		add.b	d1,d1
+		bcc.s	loc_1818
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_1818
+		ori.w	#$1000,d3
+
+loc_1818:
+		add.b	d1,d1
+		bcc.s	loc_1826
+		subq.w	#1,d6
+		btst	d6,d5
+		beq.s	loc_1826
+		ori.w	#$800,d3
+
+loc_1826:
+		move.w	d5,d1
+		move.w	d6,d7
+		sub.w	a5,d7
+		bcc.s	loc_1856
+		move.w	d7,d6
+		addi.w	#$10,d6
+		neg.w	d7
+		lsl.w	d7,d1
+		move.b	(a0),d5
+		rol.b	d7,d5
+		add.w	d7,d7
+		and.w	word_186C-2(pc,d7.w),d5
+		add.w	d5,d1
+
+loc_1844:				; XREF: loc_1868
+		move.w	a5,d0
+		add.w	d0,d0
+		and.w	word_186C-2(pc,d0.w),d1
+		add.w	d3,d1
+		move.b	(a0)+,d5
+		lsl.w	#8,d5
+		move.b	(a0)+,d5
+		rts	
+; ---------------------------------------------------------------------------
+
+loc_1856:				; XREF: loc_1826
+		beq.s	loc_1868
+		lsr.w	d7,d1
+		move.w	a5,d0
+		add.w	d0,d0
+		and.w	word_186C-2(pc,d0.w),d1
+		add.w	d3,d1
+		move.w	a5,d0
+		bra.s	sub_188C
+; ---------------------------------------------------------------------------
+
+loc_1868:				; XREF: loc_1856
+		moveq	#$10,d6
+
+loc_186A:
+		bra.s	loc_1844
+; ---------------------------------------------------------------------------
+word_186C:	dc.w 1,	3, 7, $F, $1F, $3F, $7F, $FF, $1FF, $3FF, $7FF
+		dc.w $FFF, $1FFF, $3FFF, $7FFF,	$FFFF	; XREF: loc_1856
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+sub_188C:				; XREF: EniDec
+		sub.w	d0,d6
+		cmpi.w	#9,d6
+		bcc.s	locret_189A
+		addq.w	#8,d6
+		asl.w	#8,d5
+		move.b	(a0)+,d5
+
+locret_189A:
+		rts	
+; End of function sub_188C
+	end asm
+
+
+	asm
+; ---------------------------------------------------------------------------
+; Subroutine to	display	patterns via the VDP
+; ---------------------------------------------------------------------------
+
+; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+
+
+ShowVDPGraphics:			; XREF: SegaScreen; TitleScreen; SS_BGLoad
+		lea	($C00000).l,a6
+		move.l	#$800000,d4
+
+loc_142C:
+		move.l	d0,4(a6)
+		move.w	d1,d3
+
+loc_1432:
+		move.w	(a1)+,(a6)
+		dbf	d3,loc_1432
+		add.l	d4,d0
+		dbf	d2,loc_142C
+		rts	
+; End of function ShowVDPGraphics
+	end asm
+
+'motor_stub:
+'	motor
+'	return
+
+'***************
+'Rutinas comunes
+'***************
+
+' Mairtrus: 'd5.l=mapa d0=X, d1=Y, d2=Largo, d3=Alto, d4=Opcional
+Declare Asm Sub DrawTiles16(d5.l, d0.w, d1.w, d2.w, d3.w, d4.w)	
+	movea.l	d5,a0
+	subq.b	#1,d2
+	subq.b	#1,d3
+	move.w	#$2700,sr
+	and.l	#63,d0
+	and.l	#63,d1
+	and.l	#511,d2
+	and.l	#511,d3
+	lsl.w	#6,d1
+	add.w	d1,d0
+	move.w	d2,d1
+	lsl.l	#3,d0
+	lsr.w	#2,d0
+	swap	d0
+	add.l	(GFX_PLANE),d0
+	move.w	#$8F02,4(a4)
+@1:
+	move.l	d0,4(a4)
+@2:
+	move.w	(a0)+,d7
+	add.w	d4,d7
+	move.w	d7,(a4)
+	dbf	d2,@2
+	add.l	#$800000,d0
+	move.w	d1,d2
+	dbf	d3,@1
+	move.w	#$2000,sr
+End Sub
+
+'Ruido del motor
+'declare sub motor()
+	'Estados del motor
+	'(valores de gc):
+	'==================
+	'1 = retroceso
+	'2 = marcha directa
+	'3 = estacionado
+	'Cualquier otro = apagado
+	
+'	if gc = 1 [or] gc = 2 then
+'		'POWER!
+'		psgvol 0, 13
+'		psgvol 3, 12
+'	elseif gc = 3 then
+'		'Bajarle un poco a la bulla cuando estemos detenidos
+'		psgvol 0, 9
+'		psgvol 3, 8
+'	else
+'		'Apagamos el carro...
+'		psgvol 3, 0
+'		psgvol 0, 0
+'	endif
+'	
+'	'Activar el ruido del motor
+'	psg 3, 7	'Tone Generator #3
+'	drop++
+'	if drop % 3 = 0 then
+'		psg 0, 75
+'	elseif drop % 3 = 1 then
+'		psg 0, 50
+'	elseif drop % 3 = 2 then
+'		psg 0, 25
+'	endif
+'	
+'	if drop > 39 then
+'		drop = 0
+'	endif
+	
+	'Si estamos echando retro, sonamos la alarma
+'	if gc = 1 then
+'		if drop < 20 then
+'			psgvol 1, 13
+'			psg 1, 891
+'		else
+'			psgvol 1, 0
+'		endif
+'	endif
+'end sub
+declare sub horn(doit as integer)
+	if doit > 0 then
+		'Este par de notas simula mas o menos la bocina
+		'electrica de los autobuses modernos (no las de aire)
+		'Suena muy parecido a la de cualquier Marcopolo/Busscar DD
+		psgvol 1, 15
+		psgvol 2, 15
+		psg 1, 630
+		psg 2, 980
+	else
+		'Por que no te callas!?
+		psgvol 1, 0
+		psgvol 2, 0
+	endif
+end sub
+'Game goes here, nyo...
+declare sub gameOn()
+	'Preparar la "arena"...
+	setupStage
+	
+	'Poner en marcha el motor
+	gc = 0
+	'on vblank gosub motor_stub
+	'enable interrupt vblank
+	
+	'Que queremos hacer?
+	while dr = 0
+		dr = joypad(0)
+		
+		if dr.2 then		'retroceso
+			'x--
+			accel=add_fixed(accel,0,2)
+			x=sub_fixed(x,accel >> 4,get_fraction(accel))
+			gc = 1
+			moveBus
+		elseif dr.3 then	'avanzar
+			accel=add_fixed(accel,0,2)
+			x=add_fixed(x,accel >> 4,get_fraction(accel))'++
+			gc = 2
+			moveBus
+		else
+			gc = 3
+			accel=0
+		endif
+		
+		if dr.4 then
+		waitpadup
+		gosub	radio
+		setup_scroll_a
+		endif
+		
+		if dr.6 then	'tocar bocina
+			horn 1
+		else
+			horn 0
+		endif
+		
+		if dr.5 then	'salir
+			'Liberar los sprites!
+			freeallsprites
+			'Apagar el bus...
+			disable interrupt vblank
+			psgvol 0,0: psgvol 1,0: psgvol 2,0: psgvol 3,0
+			psg 0, 0
+			psg 1, 0
+			psg 2, 0
+			'De vuelta al menu!
+			exit sub
+		endif
+		dr = 0
+		sleep 2
+	wend
+end sub
+'fixed point math written by sega16 (c) 2011
+'using an unsigned int which is 16 bits 
+'12 bits goes to whole number and 4 bits to decimal
+
+ 'set up whole number
+ 'fixed_point=&hEEA0
+' fixed_point=set_fixed(10,9)
+' print "whole number"
+' whole_number=get_whole_number(fixed_point)
+' print whole_number
+' print "fraction"
+' decimal=get_fraction(fixed_point)
+' print decimal
+declare function set_fixed(whole as integer,fraction as integer)
+ whole=whole << 4
+ return whole+fraction
+end function
+declare function get_fraction(fixed_fraction as integer)
+ return fixed_fraction and &hF
+end function
+declare function get_whole_number(fixed_number as integer)
+'note:it may be  better just to put (insert fixed varible here) >> 4 then use the this function
+ return fixed_number >> 4
+end function
+declare function add_fixed(fix_add_to as integer,add_whole as integer,add_decimal as integer)
+'so first get the fraction and decimal
+ add_to_whole=fix_add_to >> 4
+ add_to_decimal=fix_add_to and &hF
+ if add_to_decimal+add_decimal > 9 then
+ adding_decimal=add_to_decimal+add_decimal 
+ 'now do the bit shifts
+ a = adding_decimal/10
+ a=a*10 
+ b = adding_decimal-a
+ a=a/10
+ return set_fixed(a+add_to_whole+add_whole,b)
+ else
+ return set_fixed(add_to_whole+add_whole,add_to_decimal+add_decimal)
+ endif
+end function
+declare function sub_fixed(fix_sub_to as integer,sub_whole as integer,sub_decimal as integer)
+'so first get the fraction and decimal
+ add_to_whole=fix_sub_to >> 4
+ add_to_decimal=fix_sub_to and &hF
+ if sub_decimal > add_to_decimal then
+ add_to_decimal=add_to_decimal+10
+ return set_fixed (add_to_whole-sub_whole-1,add_to_decimal-sub_decimal)
+ else
+ return set_fixed(add_to_whole-sub_whole,add_to_decimal-sub_decimal)
+ endif
+end function
+'Mover autobus
+declare sub moveBus()
+	x_whole=x >> 4'get_whole_number(x)
+	'Rodar los cauchos
+	if x % 2 = 1 then
+		propsprite caucho(0), 1507, 0
+		propsprite caucho(1), 1507, 0
+	else
+		propsprite caucho(0), 1511, 0
+		propsprite caucho(1), 1511, 0
+	endif
+	select case busID
+		case 0
+			'IC395
+			movesprite caucho(0), x_whole+17, y+65
+			movesprite caucho(1), x_whole+87, y+65
+			exit case
+		case 1
+			'JB360
+			movesprite caucho(0), x_whole+15, y+65
+			movesprite caucho(1), x_whole+88, y+65
+			exit case
+		case 2
+			'ENT6000
+			movesprite caucho(0), x_whole+18, y+65
+			movesprite caucho(1), x_whole+88, y+65
+			exit case
+		case 3
+			'GEN_ESC
+			movesprite caucho(0), x_whole+12, y+65
+			movesprite caucho(1), x_whole+98, y+65
+			exit case
+		case 4
+			'PGV1150
+			movesprite caucho(0), x_whole+10, y+65
+			movesprite caucho(1), x_whole+90, y+65
+			exit case
+	end select
+	
+	'Mover el autobus entero!
+	for z = 0 to 8
+		movesprite buz(z), x_whole + ((z*16)-16), y+33
+		movesprite buz(z+9), x_whole + ((z*16)-16), y+49
+		movesprite buz(z+18), x_whole + ((z*16)-16), y+65
+	next z
+	
+	'Mostrar la posicion actual del bus
+	ink 0
+	locate 6, 22: print "     "
+	locate 6, 22: print x_whole
+end sub

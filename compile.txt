@@ -1,0 +1,30 @@
+Archivos necesarios para compilar CrazyBus v2.xx:
+=================================================
+*.tlf <== imagenes (tiles lineales)
+*.tmf <== imagenes (tiles optimizados)
+*.tmd <== mapas de tiles para los *.tmf
+
+NOTA: Perdi el modelo del Jum Buss "nuevo", solo quedo la imagen convertida
+(el archivo .tlf). Quien quiera modificarlo, va a tener que extraerlo desde
+dicho archivo, o usando el depurador de VDP de Gens.
+
+NOTA 2: Se incluyen las fotos originales en bruto, todas de mi autoria :)
+
+CB68K_BV2XX.bex <== codigo fuente
+===============
+CB68K_BV2XX.bin <== ROM compilada
+
+Herramientas REQUERIDAS:
+ - BasiEgaXorz 1.37+
+ - ImaGenesis 4000+ (WARNING: no funciona en Wine!)
+ - SGTD 0.46+
+
+Herramientas recomendadas:
+ - Paint Shop Pro 7.0 o INFERIOR (cualquiera que no sea Corel)
+ - KolourPaint, MS Paint, o equivalente
+ - GenRomSuite 2.8.2
+ - Algun buen editor hexadecimal (WinHex, XVI32, KHexEdit...)
+
+Probado en:
+ - Gens/GS r7 (Linux)
+ - Kega Fusion 3.63x (Linux)

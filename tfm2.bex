@@ -1,0 +1,64 @@
+	asm
+Z80_BUSREQ	equ	$a11100
+Z80_RESET	equ	$a11200
+	end asm
+	
+
+
+		print	"Hidden palce zone"
+		
+		asm
+			move.l #GameBgm, D0 ;Move the music start address to D0
+			bsr Playmusic
+		end asm
+		
+	
+	while 1
+		sleep 1
+	wend
+	
+	asm
+
+	; D0: Music source address (0 to stop music)
+
+Playmusic:
+		move.w #$100,Z80_BUSREQ ;busreq on
+		move.w #$100,Z80_RESET ;reset off
+
+		lea $a01ffc,a0 ;#1ffc in Z80 RAM
+		move.b d0,(a0)+ ;write 4-byte addr in Z80 RAM
+		lsr.l #8,d0
+		move.b d0,(a0)+
+		lsr.l #8,d0
+		move.b d0,(a0)+
+		lsr.l #8,d0
+		move.b d0,(a0)+
+
+		lea DriverZ80,a0 ;copy Z80 driver to Z80 RAM
+		lea $a00000,a1
+		move.l #DriverZ80end,d0
+		move.l #DriverZ80,d1
+		sub.l d1,d0
+copyLoop:
+		move.b (a0)+,(a1)+
+		subq.w #1,d0
+		bne copyLoop
+
+		move.w #$0,Z80_RESET ;reset on
+		move.w #$0,Z80_BUSREQ ;busreq off
+		move.w #$100,Z80_RESET ;reset off
+
+		rts
+		;===============================
+		end asm
+	
+	
+	asm
+DriverZ80: 
+	incbin "z80drv.bin"
+	even
+DriverZ80end:
+GameBgm:
+		incbin "sonic2.tfc"
+GameBgm_end:
+	end asm
