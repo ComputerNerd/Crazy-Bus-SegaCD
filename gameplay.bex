@@ -16,7 +16,7 @@
 	gameOn
 	cls
 	print	"loading crazy bus"
-	'after this take the game back to the title screen
+	'After this take the game back to the title screen
 	loadscd 2
 	end
 	
@@ -228,16 +228,16 @@ bg_f_06:
 
 	global radio_track as integer
 radio:
-'added by sega16
-'this will let you select an audio track from the cd
+'added by Sega16
+'this will let you select an audio track from the CD
 	setgfxplane scroll_a
 	settextplane scroll_a
 	cls
 	locate 0,0
-	print	"This is the radio select a track"
-	print	"use the left and right buttons to select a track"
-	print	"press start to play the track and exit"
-	print	"the first track is zero"
+	print	"This is the radio. To select a track"
+	print	"use the left and right buttons."
+	print	"Press start to play the track and exit."
+	print	"The first track is zero."
 	joy = 1
 	gosub	redraw_radio
 	while 1
@@ -985,7 +985,7 @@ declare sub gameOn()
 		sleep 2
 	wend
 end sub
-'fixed point math written by sega16 (c) 2011
+'fixed point math written by Sega16 (c) 2011
 'using an unsigned int which is 16 bits 
 '12 bits goes to whole number and 4 bits to decimal
 
@@ -1006,7 +1006,7 @@ declare function get_fraction(fixed_fraction as integer)
  return fixed_fraction and &hF
 end function
 declare function get_whole_number(fixed_number as integer)
-'note:it may be  better just to put (insert fixed varible here) >> 4 then use the this function
+'note:it may be  better just to put (insert fixed variable here) >> 4 then use the this function
  return fixed_number >> 4
 end function
 declare function add_fixed(fix_add_to as integer,add_whole as integer,add_decimal as integer)

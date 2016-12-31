@@ -7,12 +7,12 @@
  poke &hA04002,&hB6
  gosub BUSYWAIT
  poke &hA04003,&hC0
-	print	"pitch preserving time strech"
-	print	"on the sega genesis!"
+	print	"pitch preserving time stretch"
+	print	"on the Sega Genesis!"
 	print	"press the up button to select the"
 	print	"buffer size or how long each sample is"
 	locate 4,0
-	print	"played before being replayed.Press the"
+	print	"played before being replayed. Press the"
 	locate 5,0
 	print	"down arrow to select how many times"
 	print	"the small sample will be replayed"
@@ -39,7 +39,7 @@
 	if pad.7 then
 	waitpadup
 	asm
-	;move varibles to proper registers
+	;move variables to proper registers
 	move.w	(__INTEGER_ECHO),d2
 	move.w	(__INTEGER_BUFFER),d1
 	jsr		play_pcm

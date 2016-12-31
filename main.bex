@@ -287,8 +287,8 @@ declare sub title_screen()
 	locate 20, 0: print "  (C)2004-2010 por Tom Scripts LTDA. "
 	locate 21, 0: print "Portions by: DevSter, Mairtrus, theelf"
 	locate 22, 0: print "Fotografias/Photos:  (C)2006-2009 Tom Maneiro"
-	locate 23, 0: print "Sega cd and enhancments by sega16"
-	locate 24,0: print "some translations by sega16/google translate"
+	locate 23, 0: print "Sega CD and enhancements by sega16"
+	locate 24,0: print "Some translations by Sega16/Google Translate"
 	locate 25, 0: print capt$
 	locate 26 ,0
 	print "HECHO EN VENEZUELA - MADE IN VENEZUELA"

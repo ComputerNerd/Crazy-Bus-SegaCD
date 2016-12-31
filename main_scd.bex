@@ -1,3 +1,4 @@
+' 2016-21-31 note: This code is unused
 'this is the master program for crazy bus it will play the sega intro in sega 16 fmv format 0.05
 'I am porting the fmv code from asm to basic
 	asm
